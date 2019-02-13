@@ -25,9 +25,11 @@ public class TreeSimplifier implements Visitor<Tree> {
 
 	  public Tree visit(Block n) {
 		  // TODO Implement this!
-	  	  for( Statement stat: n.body)
-	  	  	stat = (Statement)stat.accept(this);
-		  return n;
+		for(int i = 0; i < n.body.size(); i++)
+			n.body.set (i,(Statement)n.body.get(i).accept(this));
+
+
+		return n;
 	  }
 
 	  public Tree visit(IfThenElse n) {
