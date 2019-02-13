@@ -2,6 +2,8 @@ package whilelang.interp;
 
 import whilelang.ast.*;
 
+import java.util.*;
+
 public class TreeSimplifier implements Visitor<Tree> {
 
 
@@ -24,7 +26,7 @@ public class TreeSimplifier implements Visitor<Tree> {
 	  public Tree visit(Block n) {
 		  // TODO Implement this!
 	  	  for( Statement stat: n.body)
-	  	  	stat = stat.accept(this)
+	  	  	stat = (Statement)stat.accept(this);
 		  return n;
 	  }
 
