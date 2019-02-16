@@ -58,7 +58,12 @@ public class Interpreter implements Visitor<Integer>{
 
 	public Integer visit(Var n) {
 		// TODO Implement this!
-		return variables.get(n.varID);
+        if(variables.get(n.varID) != null)
+        {
+            return variables.get(n.varID);
+        }
+        variables.put(n.varID,0);
+        return 0;
 	}
 
 	public Integer visit(IntLiteral n) {
