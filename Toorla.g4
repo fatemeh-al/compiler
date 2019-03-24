@@ -28,6 +28,8 @@ FUNCTION: 'function';
 
 PRINT: 'print';
 
+LENGTH: 'length';
+
 IF: 'if';
 
 PRIVATE: 'private';
