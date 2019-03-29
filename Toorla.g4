@@ -90,11 +90,6 @@ methodExpressionTemp: DOT (ID LPAREN RPAREN | ID LPAREN (expression COMMA)* expr
 
 otherExpression: INTLIT | STRINGLIT | SELF | TRUE | FALSE | NEW ID LPAREN RPAREN | NEW (INT | STRING | BOOL | ID) LBRACKET INTLIT RBRACKET | ID | ID LBRACKET expression RBRACKET | LPAREN expression RPAREN;
 
-singleComment: SINGLECOMMENT (~[\r\n])* -> skip;
-
-//not sure about this line too
-multilineComment: LMULTICOMMENT (~(RMULTICOMMENT))* RMULTICOMMENT -> skip;
-
 assignstatement: expression ASSIGN expression SEMICOLON;
 
 varstatement: VAR (ID ASSIGN expression COMMA)* ID ASSIGN expression SEMICOLON;
@@ -165,7 +160,7 @@ ID: (LETTER)(LETTER | DIGIT)*;
 
 STRINGLIT: '"' (~["\n])* '"';
 
-LPAAREN: '(';
+LPAREN: '(';
 
 RPAREN: ')';
 
@@ -217,6 +212,9 @@ PLUSONE: '++';
 
 MINUSONE: '--';
 
+SINGLE_COMMENT: SINGLECOMMENT(~[\r\n])* -> skip;
+
+MULTILINE_COMMENT: LMULTICOMMENT .*? RMULTICOMMENT -> skip;
 
 
 
