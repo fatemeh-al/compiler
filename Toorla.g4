@@ -1,4 +1,4 @@
-grammar Toorla2;
+grammar Toorla;
 
 @header
 {
@@ -54,37 +54,30 @@ fieldDef[Declaration class] returns[FieldDeclaration field] locals[ArrayList<Fie
         FIELD
         ( innerField=id COMMA {$inners.add(new FieldDeclaration($innerField.identifier)); })*
         name=id t=type SEMICOLON
-        { $field =new FieldDeclaration($name.identifier, $t.type); }
+        { $field =new FieldDeclaration($name.identifier, $t.t); }
     )
     {
         for(FieldDeclaration inner : $inners)
         {
-            $inner.setAccessModifier($field.getAccessModifier());
-            $inner.setType($field.getType());
+            inner.setAccessModifier($field.getAccessModifier());
+            inner.setType($field.getType());
             $class.addFieldDeclaration(inner);
         }
     }
 ;
 
-
-
-
-//not checked
-primitiveType returns[Type t]: INT {$t=new IntType();}|
-                               BOOL {$t=new boolType();}|
-                               STRING {$t=new StringType();}
-;
-
 type returns[Type t]:
-type_a=primitiveType {$t=type_a;}|
-type_b=primitiveType LBRACKET RBRACKET{$t=new ArrayType(); $t.setSingleType(type_b);} |
-ID{$t=new UserDefindType(); $t.setClassDeclaration(new ClassDeclaration($ID.text));} |
-ID LBRACKET RBRACKET{$t=new ArrayType(); $t.setClassDeclaration(new ClassDeclaration($ID.text));}
+    type_a=primitiveType {$t=$type_a.t;}
+    | type_b=primitiveType LBRACKET RBRACKET{$t=new ArrayType(); $t.setSingleType($type_b.t);}
+    | name=id{$t=new UserDefindType(new ClassDeclaration($name.identifier));}
+    | name2=id LBRACKET RBRACKET{$t=new ArrayType(); $t.setSingleType(new UserDefinedType(new ClassDeclaration($name2.identifier)));}
 ;
-//up to here
 
-
-
+primitiveType returns[Type t]:
+    INT {$t=new IntType();}
+    | BOOL {$t=new boolType();}
+    | STRING {$t=new StringType();}
+;
 
 methodDef returns[MethodDeclaration method]:
     (a=accessModifier FUNCTION name=id { $method=new MethodDeclaration($name.identifier); $method.setAccessModifier($a.access); }
@@ -120,36 +113,13 @@ matchedStat returns[Statement stat]locals[ArrayList<Conditional> elifs]:
     | s7=returnstatement { $stat= $s7.r; }
     | s8=skipstatement { $stat= $s8.skip; }
     | s9=decstatement { $stat=$s9.dec; }
+    | s10=breakstatement {$stat=$s10.break; }
+    | s11=continuestatement {$stat=$s11.continue; }
 ;
 
 unmatchedStat returns[Statement stat]:
     IF LPAREN expression RPAREN statement
     | IF LPAREN expression RPAREN matchedStat (ELIF LPAREN expression RPAREN matchedStat)* ELSE unmatchedStat
-    | unmatchedWhileStatement
-;
-
-loopstatement returns[Statement stat]:
-    matchedInLoop | unmatchedInLoop
-;
-
-matchedInLoop:
-    IF LAPREN expression RPAREN matchedInLoop (ELIF LPAREN expression RAPREN matchedInLoop)* ELSE matchedInLoop
-    | assignstatement
-    | printstatement
-    | returnstatement
-    | matchedWhileStatement
-    | incstatement
-    | decstatement
-    | varstatement
-    | skipstatement
-    | blockstatementInLoop
-    | breakstatement
-    | continuestatement
-;
-
-unmatchedInLoop:
-    IF LPAREN expression RPAREN loopstatement
-    | IF LPAREN expression RPAREN matchedInLoop (ELIF LPAREN expression RPAREN matchedInLoop)* ELSE unmatchedInLoop
     | unmatchedWhileStatement
 ;
 
@@ -167,26 +137,19 @@ blockstatement returns [Block block]:
     END
 ;
 
-blockstatementInLoop:
-    { $block = new Block(); }
-    BEGIN (s=statement { $block.addStatement($s.stat); } | l=loopstatement   { $block.addStatement($l.stat); })*
-    END
-;
-
-
 //can be deleted
 whilestatement returns[While while]:
-    WHILE LPAREN exp=expression RPAREN stat=loopstatement
+    WHILE LPAREN exp=expression RPAREN stat=statement
     { $while = new While($exp.exp, $stat.stat); }
 ;
 
 matchedWhileStatement returns[While while]:
-    WHILE LPAREN exp=expression RPAREN stat=matchedInLoop
+    WHILE LPAREN exp=expression RPAREN stat=matchedStat
     { $while = new While($exp.exp, $stat.stat); }
 ;
 
 unmatchedWhileStatement returns[While while]:
-    WHILE LPAREN exp=expression RPAREN stat=unmatchedInLoop
+    WHILE LPAREN exp=expression RPAREN stat=unmatchedStat
     { $while = new While($exp.exp, $stat.stat); }
 ;
 
@@ -264,7 +227,7 @@ equalExpression returns[Expression exp]:
 equalExpressionTemp[Expression lhs] returns[Expression exp] locals[Equals equalexp, NotEquals nequalexp]:
     EQUAL rhsEq=compExpression { $equalexp= new Equals($lhs, $rhsEq.exp); } eqTemp=equalExpressionTemp[$equalexp]
     { $exp = $eqTemp.exp; }
-    | NOTEQUAL rhsNeq=compExpreasion {$nequalexp = new NotEquals($lhs, $rhsNeq.exp); } neqTemp=equalExpressionTemp[$nequalexp]
+    | NOTEQUAL rhsNeq=compExpression {$nequalexp = new NotEquals($lhs, $rhsNeq.exp); } neqTemp=equalExpressionTemp[$nequalexp]
     { $exp = $neqTemp.exp; }
     |
     { $exp = $lhs; }
@@ -343,7 +306,7 @@ methodExpression returns[Expression exp]:
 methodExpressionTemp[Expression instance] returns[Expression exp] locals[MethodCall m, FieldCall f]:
     DOT name=id LPAREN RPAREN { $m = new MethodCall($instance, $name.identifier); } method=methodExpressionTemp[$m]
     { $exp = $method.exp; }
-    | DOT name2= LPAREN { $m = new MethodCall($instance, $name2.identifier); } (args=expression COMMA { $m.addArg($args.exp); } )* arg=expression { $m.addArg($arg.exp); } RPAREN method2=methodExpressionTemp[$m]
+    | DOT name2=id LPAREN { $m = new MethodCall($instance, $name2.identifier); } (args=expression COMMA { $m.addArg($args.exp); } )* arg=expression { $m.addArg($arg.exp); } RPAREN method2=methodExpressionTemp[$m]
     { $exp = $method2.exp; }
     | DOT 'length' { $f = new FieldCall($instance, new Identifier('length')); } method3=methodExpressionTemp[$f]
     { $exp = $method3.exp; }
