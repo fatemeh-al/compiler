@@ -13,6 +13,10 @@ grammar Toorla;
     import java.util.List;
 }
 
+@members
+{
+    int currentLine = 0;
+}
 
 program returns[Program root]:
     { $root = new Program(); }
@@ -20,10 +24,8 @@ program returns[Program root]:
     EOF
 ;
 
-id returns[Identifier identifier] : a=ID
-{
-    $identifier=new Identifier($a.text);
-}
+id returns[Identifier identifier]:
+    a=ID { $identifier=new Identifier($a.text); }
 ;
 
 classDef returns[Declaration class]:
@@ -99,11 +101,16 @@ statement returns[Statement stat]:
     | u = unmatchedStat { $stat = $u.stat; }
 ;
 
-matchedStat returns[Statement stat]locals[ArrayList<Conditional> elifs]:
+matchedStat returns[Statement stat] locals[ArrayList<Conditional> elifs]:
     { $elifs = new ArrayList<>(); }
-    IF LPAREN e=expression RPAREN then=matchedStat
-    (ELIF LPAREN exp=expression RPAREN thenn=matchedStat )*
+    IF LPAREN e=expression RPAREN then=matchedStat { $elifs.add(new Conditional($e.exp, $then.stat)); }
+    (ELIF LPAREN exp=expression RPAREN thenn=matchedStat { $elifs.add(new Conditional($exp.exp, $thenn.stat)); })*
     ELSE elseStat=matchedStat
+    {   $elifs.get($elifs.size() - 1).setElseStatement($elseStat.stat);
+        for(int i = $elifs.size() - 2; i >= 0; i--)
+            $elifs.get(i).setElseStatement($elifs.get(i + 1));
+        $stat = $elifs.get(0);
+    }
     | s1=assignstatement { $stat= $s1.assign; }
     | s2=matchedWhileStatement { $stat= $s2.while; }
     | s3=printstatement { $stat= $s3.print; }
@@ -117,10 +124,20 @@ matchedStat returns[Statement stat]locals[ArrayList<Conditional> elifs]:
     | s11=continuestatement {$stat=$s11.continue; }
 ;
 
-unmatchedStat returns[Statement stat]:
-    IF LPAREN expression RPAREN statement
-    | IF LPAREN expression RPAREN matchedStat (ELIF LPAREN expression RPAREN matchedStat)* ELSE unmatchedStat
-    | unmatchedWhileStatement
+unmatchedStat returns[Statement stat] locals[ArrayList<Conditional> elifs]:
+    IF LPAREN condition=expression RPAREN then=statement
+    { $stat = new Conditional($condition.exp, $then.stat); }
+    | { $elifs = new ArrayList<>(); }
+    IF LPAREN e=expression RPAREN then2=matchedStat { $elifs.add(new Conditional($e.exp, $then2.stat)); }
+    (ELIF LPAREN exp=expression RPAREN elifthen=matchedStat { $elifs.add(new Conditional($exp.exp, $elifthen.stat)); })*
+    ELSE elze=unmatchedStat
+    {   $elifs.get($elifs.size() - 1).setElseStatement($elze.stat);
+            for(int i = $elifs.size() - 2; i >= 0; i--)
+                $elifs.get(i).setElseStatement($elifs.get(i + 1));
+            $stat = $elifs.get(0);
+    }
+    | openWhile=unmatchedWhileStatement
+    { $stat = $openWhile.while; }
 ;
 
 breakstatement returns[Break break]:
@@ -331,9 +348,13 @@ otherExpression returns[Expression exp]:
     | LPAREN exp2=expression RPAREN { $exp = $exp2.exp; }
 ;
 
+newline: NEWLINE { currnetLine += 1; };
+
 INTLIT: [1-9][0-9]* | [0];
 
-WS: [ \t\n] -> skip;
+WS: [ \t] -> skip;
+
+NEWLINE: [\n\r];
 
 BOOL: 'bool';
 
