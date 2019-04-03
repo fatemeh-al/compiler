@@ -27,7 +27,7 @@ public class TreePrinter implements Visitor<Void> {
     //TODO : Implement all visit methods in TreePrinter to print AST as required in phase1 document
     @Override
     public Void visit(PrintLine printStat) {
-        System.out.print("(print");
+        System.out.print("(print ");
         printStat.getArg().accept(this);
         System.out.println(")");
         return null;
@@ -295,7 +295,7 @@ public class TreePrinter implements Visitor<Void> {
 
     @Override
     public Void visit(NewArray newArray) {
-        System.out.print("( new array of ");
+        System.out.print("(new arrayof ");
         String string = newArray.getType().toString();
         System.out.print(string+" ");
         newArray.getLength().accept(this);
@@ -319,9 +319,9 @@ public class TreePrinter implements Visitor<Void> {
 
     @Override
     public Void visit(NewClassInstance newClassInstance) {
-        System.out.print("( new ");
+        System.out.print("(new ");
         newClassInstance.getClassName().accept(this);
-        System.out.print(" )");
+        System.out.print(")");
         return null;
     }
 
@@ -393,7 +393,7 @@ public class TreePrinter implements Visitor<Void> {
 
     @Override
     public Void visit(FieldDeclaration fieldDeclaration) {
-        System.out.print("( ");
+        System.out.print("(");
         String string = fieldDeclaration.getAccessModifier().toString();
         System.out.print(string);
         System.out.print(" field ");
@@ -420,7 +420,7 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(MethodDeclaration methodDeclaration) {
         ArrayList<ParameterDeclaration> args = methodDeclaration.getArgs();
         ArrayList<Statement> body = methodDeclaration.getBody();
-        System.out.print("( ");
+        System.out.print("(");
         String string = methodDeclaration.getAccessModifier().toString();
         System.out.print(string);
         System.out.print(" method ");
