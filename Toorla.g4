@@ -339,7 +339,7 @@ methodExpressionTemp[Expression instance] returns[Expression exp] locals[MethodC
     { $exp = $instance; }
 ;
 
-otherExpression returns[Expression exp]:
+otherExpression returns[Expression exp] locals[MethodCall m]:
     a=INTLIT { $exp = new IntValue($a.int); }
     | b=STRINGLIT { $exp = new StringValue($b.text); }
     | FALSE { $exp = new BoolValue(false); }
@@ -351,13 +351,11 @@ otherExpression returns[Expression exp]:
     | NEW BOOL LBRACKET len3=expression RBRACKET { $exp = new NewArray(new BoolType(), $len3.exp); }
     | NEW name=id LBRACKET len4=expression RBRACKET { $exp = new NewArray(new UserDefinedType(new ClassDeclaration($name.identifier)), $len4.exp); }
     | var=id { $exp = $var.identifier; }
-    | name2=id LPAREN RPAREN
-    | name3=id LPAREN(e=expression COMMA)* e2=expression RPAREN
-    | name4=id LBRACKET e2=expression RBRACKET
+    | name2=id LPAREN RPAREN { $exp = new MethodCall(new Self(), $name2.identifier); }
+    | name3=id LPAREN { $m = new MethodCall(new Self(), $name3.identifier); } (e=expression COMMA { $m.addArg($e.exp); } )* e2=expression RPAREN { $m.addArg($e2.exp); $exp = $m;}
+    | name4=id LBRACKET e2=expression RBRACKET { $exp = new ArrayCall($name4.identifier, $e2.exp); }
     | LPAREN exp2=expression RPAREN { $exp = $exp2.exp; }
 ;
-
-//COMPLETE ABOVE RULE ACTIONS
 
 INTLIT: [1-9][0-9]* | [0];
 
