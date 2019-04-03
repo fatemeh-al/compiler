@@ -255,6 +255,20 @@ public class TreePrinter implements Visitor<Void> {
 
     @Override
     public Void visit(MethodCall methodCall) {
+        System.out.print("(. ");
+        methodCall.getInstance().accept(this);
+        methodCall.getMethodName().accept(this);
+        ArrayList<Expression> args=methodCall.getArgs();
+        int size=args.size();
+        if(size!=0) {
+            System.out.print("( ");
+            for (Expression expr : args) {
+                expr.accept(this);
+                System.out.print(" ");
+            }
+            System.out.print(")");
+        }
+        System.out.println(")");
         return null;
     }
 
