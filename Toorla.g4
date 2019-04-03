@@ -36,7 +36,7 @@ id returns[Identifier identifier]:
     a=ID { $identifier=new Identifier($a.text); }
 ;
 
-classDef returns[Declaration newClass]:
+classDef returns[ClassDeclaration newClass]:
     (ENTRY CLASS name=id INHERITS parent=id COLON { $newClass = new EntryClassDeclaration($name.identifier, $parent.identifier); }
     | ENTRY CLASS name=id COLON { $newClass = new EntryClassDeclaration($name.identifier); }
     | CLASS name=id INHERITS parent=id COLON { $newClass = new ClassDeclaration($name.identifier, $parent.identifier); }
@@ -53,7 +53,7 @@ accessModifier returns[AccessModifier access]:
     PRIVATE { $access = AccessModifier.ACCESS_MODIFIER_PRIVATE; }
 ;
 
-fieldDef[Declaration newClass] returns[FieldDeclaration field] locals[ArrayList<FieldDeclaration> inners]:
+fieldDef[ClassDeclaration newClass] returns[FieldDeclaration field] locals[ArrayList<FieldDeclaration> inners]:
     { $inners = new ArrayList<>(); }
     (
         a=accessModifier FIELD
@@ -78,14 +78,14 @@ fieldDef[Declaration newClass] returns[FieldDeclaration field] locals[ArrayList<
 
 type returns[Type t]:
     type_a=primitiveType {$t=$type_a.t;}
-    | type_b=primitiveType LBRACKET RBRACKET{$t=new ArrayType(); $t.setSingleType($type_b.t);}
+    | type_b=primitiveType LBRACKET RBRACKET{$t=new ArrayType($type_b.t);}
     | name=id{$t=new UserDefinedType(new ClassDeclaration($name.identifier));}
-    | name2=id LBRACKET RBRACKET{$t=new ArrayType(); $t.setSingleType(new UserDefinedType(new ClassDeclaration($name2.identifier)));}
+    | name2=id LBRACKET RBRACKET{$t=new ArrayType(new UserDefinedType(new ClassDeclaration($name2.identifier)));}
 ;
 
-primitiveType returns[Type t]:
+primitiveType returns[SingleType t]:
     INT {$t=new IntType();}
-    | BOOL {$t=new boolType();}
+    | BOOL {$t=new BoolType();}
     | STRING {$t=new StringType();}
 ;
 
@@ -96,8 +96,8 @@ methodDef returns[MethodDeclaration method]:
     )
     (LPAREN RPAREN
         |
-    LPAREN (argName=id COLON argtype=type COMMA { $method.addArg(new PerameterDeclaration($argName.identifier, $argtype.t)); } )*
-    newArg=id COLON argType=type RPAREN {$method.addArg(new ParemeterDeclaration($newArg.identifier, $argType.t)); }
+    LPAREN (argName=id COLON argtype=type COMMA { $method.addArg(new ParameterDeclaration($argName.identifier, $argtype.t)); } )*
+    newArg=id COLON argType=type RPAREN {$method.addArg(new ParameterDeclaration($newArg.identifier, $argType.t)); }
     )
     RETURNS returnType=type { $method.setReturnType($returnType.t); }
     COLON (newStat=statement {$method.addStatement($newStat.stat); } )*
@@ -199,7 +199,7 @@ assignstatement returns[Assign assign]:
 ;
 
 varstatement returns[LocalVarsDefinitions defs]:
-    { $defs = new LocalVarDefinitions(); }
+    { $defs = new LocalVarsDefinitions(); }
     VAR (newVar=id ASSIGN e=expression COMMA {$defs.addVarDefinition(new LocalVarDef($newVar.identifier, $e.exp)); })*
     varName=id ASSIGN exp=expression SEMICOLON
     {$defs.addVarDefinition(new LocalVarDef($varName.identifier, $exp.exp)); }
