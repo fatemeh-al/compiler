@@ -68,6 +68,10 @@ public class TreePrinter implements Visitor<Void> {
             elseStmt.accept(this);
             System.out.print(" ");
         }
+        else{
+            Skip empty=new Skip();
+            empty.accept(this);
+        }
         System.out.println(")");
         return null;
     }
@@ -259,8 +263,7 @@ public class TreePrinter implements Visitor<Void> {
         methodCall.getInstance().accept(this);
         methodCall.getMethodName().accept(this);
         ArrayList<Expression> args=methodCall.getArgs();
-        int size=args.size();
-        if(size!=0) {
+        if(!(methodCall.getMethodName().getName().equals("lenght"))) {
             System.out.print("( ");
             for (Expression expr : args) {
                 expr.accept(this);
