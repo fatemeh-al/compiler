@@ -27,7 +27,7 @@ public class TreePrinter implements Visitor<Void> {
     //TODO : Implement all visit methods in TreePrinter to print AST as required in phase1 document
     @Override
     public Void visit(PrintLine printStat) {
-        System.out.print("( ");
+        System.out.print("(print");
         printStat.getArg().accept(this);
         System.out.println(")");
         return null;
