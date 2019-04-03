@@ -263,14 +263,12 @@ public class TreePrinter implements Visitor<Void> {
         methodCall.getInstance().accept(this);
         methodCall.getMethodName().accept(this);
         ArrayList<Expression> args=methodCall.getArgs();
-        if(!(methodCall.getMethodName().getName().equals("lenght"))) {
-            System.out.print("( ");
+            System.out.print("(");
             for (Expression expr : args) {
                 expr.accept(this);
                 System.out.print(" ");
             }
             System.out.print(")");
-        }
         System.out.println(")");
         return null;
     }
