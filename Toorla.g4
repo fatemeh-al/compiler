@@ -348,13 +348,11 @@ otherExpression returns[Expression exp]:
     | LPAREN exp2=expression RPAREN { $exp = $exp2.exp; }
 ;
 
-newline: NEWLINE { currnetLine += 1; };
-
 INTLIT: [1-9][0-9]* | [0];
 
 WS: [ \t] -> skip;
 
-NEWLINE: [\n\r];
+NEWLINE: [\n\r] -> skip;
 
 BOOL: 'bool';
 
