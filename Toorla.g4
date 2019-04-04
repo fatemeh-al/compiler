@@ -26,31 +26,39 @@ grammar Toorla;
     int currentLine = 0;
 }
 
-program returns[Program root]:
-    { $root = new Program(); }
-    (newClass=classDef { $root.addClass($newClass.newClass); } )*
+program returns[Program root] locals[boolean setLine]:
+    { $root = new Program(); $setLine = true; }
+    (newClass=classDef
+        {   $root.addClass($newClass.newClass);
+            if($setLine)
+            {
+                $root.line = $newClass.newClass.line;
+                $root.col = $newClass.newClass.col;
+                $setLine = false;
+            }
+        }
+    )*
     EOF
 ;
 
 id returns[Identifier identifier]:
-    a=ID { $identifier=new Identifier($a.text); }
+    a=ID { $identifier=new Identifier($a.text); $identifier.line = $a.line; $identifier.col = $a.pos; }
 ;
 
 classDef returns[ClassDeclaration newClass]:
-    (ENTRY CLASS name=id INHERITS parent=id COLON { $newClass = new EntryClassDeclaration($name.identifier, $parent.identifier); }
-    | ENTRY CLASS name=id COLON { $newClass = new EntryClassDeclaration($name.identifier); }
-    | CLASS name=id INHERITS parent=id COLON { $newClass = new ClassDeclaration($name.identifier, $parent.identifier); }
-    | CLASS name=id COLON { $newClass = new ClassDeclaration($name.identifier); }
+    (key1=ENTRY CLASS name=id INHERITS parent=id COLON { $newClass = new EntryClassDeclaration($name.identifier, $parent.identifier); $newClass.line = $key1.line; $newClass.col = $key1.pos; }
+        | key2=ENTRY CLASS name=id COLON { $newClass = new EntryClassDeclaration($name.identifier); $newClass.line = $key2.line; $newClass.col = $key2.pos;}
+        | key3=CLASS name=id INHERITS parent=id COLON { $newClass = new ClassDeclaration($name.identifier, $parent.identifier); $newClass.line = $key3.line; $newClass.col = $key3.pos; }
+        | key4=CLASS name=id COLON { $newClass = new ClassDeclaration($name.identifier); $newClass.line = $key4.line; $newClass.col = $key4.pos; }
     )
     ( newField=fieldDef[$newClass] { $newClass.addFieldDeclaration($newField.field); }
-    | newMethod=methodDef {$newClass.addMethodDeclaration($newMethod.method); })*
+        | newMethod=methodDef {$newClass.addMethodDeclaration($newMethod.method); })*
     END
 ;
 
-accessModifier returns[AccessModifier access]:
-    PUBLIC { $access = AccessModifier.ACCESS_MODIFIER_PUBLIC; }
-    |
-    PRIVATE { $access = AccessModifier.ACCESS_MODIFIER_PRIVATE; }
+accessModifier returns[AccessModifier access, int line, int col]:
+    key1=PUBLIC { $access = AccessModifier.ACCESS_MODIFIER_PUBLIC; $line = $key1.line; $col = $key1.pos; }
+    | key2=PRIVATE { $access = AccessModifier.ACCESS_MODIFIER_PRIVATE; $line = $key2.line; $col = $key2.pos; }
 ;
 
 fieldDef[ClassDeclaration newClass] returns[FieldDeclaration field] locals[ArrayList<FieldDeclaration> inners]:
@@ -59,12 +67,12 @@ fieldDef[ClassDeclaration newClass] returns[FieldDeclaration field] locals[Array
         a=accessModifier FIELD
         ( innerField=id COMMA { $inners.add(new FieldDeclaration($innerField.identifier)); })*
         name=id t=type SEMICOLON
-        { $field = new FieldDeclaration($name.identifier, $t.t, $a.access); }
+        { $field = new FieldDeclaration($name.identifier, $t.t, $a.access); $field.line = $a.line; $field.col = $a.col; }
     |
-        FIELD
+        key=FIELD
         ( innerField=id COMMA {$inners.add(new FieldDeclaration($innerField.identifier)); })*
         name=id t=type SEMICOLON
-        { $field =new FieldDeclaration($name.identifier, $t.t); }
+        { $field =new FieldDeclaration($name.identifier, $t.t); $field.line = $key.line; $field.col = $key.pos; }
     )
     {
         for(FieldDeclaration inner : $inners)
@@ -78,26 +86,25 @@ fieldDef[ClassDeclaration newClass] returns[FieldDeclaration field] locals[Array
 
 type returns[Type t]:
     type_a=primitiveType {$t=$type_a.t;}
-    | type_b=primitiveType LBRACKET RBRACKET{$t=new ArrayType($type_b.t);}
-    | name=id{$t=new UserDefinedType(new ClassDeclaration($name.identifier));}
-    | name2=id LBRACKET RBRACKET{$t=new ArrayType(new UserDefinedType(new ClassDeclaration($name2.identifier)));}
+    | type_b=primitiveType LBRACKET RBRACKET{$t=new ArrayType($type_b.t);  }
+    | name=id{$t=new UserDefinedType(new ClassDeclaration($name.identifier)); }
+    | name2=id LBRACKET RBRACKET{$t=new ArrayType(new UserDefinedType(new ClassDeclaration($name2.identifier))); }
 ;
 
 primitiveType returns[SingleType t]:
-    INT {$t=new IntType();}
-    | BOOL {$t=new BoolType();}
-    | STRING {$t=new StringType();}
+    key=INT {$t=new IntType(); }
+    | key1=BOOL {$t=new BoolType(); }
+    | key2=STRING {$t=new StringType(); }
 ;
 
 methodDef returns[MethodDeclaration method]:
-    (a=accessModifier FUNCTION name=id { $method=new MethodDeclaration($name.identifier); $method.setAccessModifier($a.access); }
-        |
-    FUNCTION name=id { $method = new MethodDeclaration($name.identifier); }
+    (a=accessModifier FUNCTION name=id { $method=new MethodDeclaration($name.identifier); $method.setAccessModifier($a.access); $method.line = $a.line; $method.col = $a.col; }
+        | key=FUNCTION name=id { $method = new MethodDeclaration($name.identifier); $method.line = $key.line; $method.col = $key.pos; }
+        | key=FUNCTION name=id { $method = new MethodDeclaration($name.identifier); $method.line = $key.line; $method.col = $key.pos; }
     )
     (LPAREN RPAREN
-        |
-    LPAREN (argName=id COLON argtype=type COMMA { $method.addArg(new ParameterDeclaration($argName.identifier, $argtype.t)); } )*
-    newArg=id COLON argType=type RPAREN {$method.addArg(new ParameterDeclaration($newArg.identifier, $argType.t)); }
+        | LPAREN (argName=id COLON argtype=type COMMA { $method.addArg(new ParameterDeclaration($argName.identifier, $argtype.t)); } )*
+        newArg=id COLON argType=type RPAREN {$method.addArg(new ParameterDeclaration($newArg.identifier, $argType.t)); }
     )
     RETURNS returnType=type { $method.setReturnType($returnType.t); }
     COLON (newStat=statement {$method.addStatement($newStat.stat); } )*
@@ -111,13 +118,14 @@ statement returns[Statement stat]:
 
 matchedStat returns[Statement stat] locals[ArrayList<Conditional> elifs]:
     { $elifs = new ArrayList<>(); }
-    IF LPAREN e=expression RPAREN then=matchedStat { $elifs.add(new Conditional($e.exp, $then.stat)); }
+    key=IF LPAREN e=expression RPAREN then=matchedStat { $elifs.add(new Conditional($e.exp, $then.stat)); }
     (ELIF LPAREN exp=expression RPAREN thenn=matchedStat { $elifs.add(new Conditional($exp.exp, $thenn.stat)); })*
     ELSE elseStat=matchedStat
     {   $elifs.get($elifs.size() - 1).setElseStatement($elseStat.stat);
         for(int i = $elifs.size() - 2; i >= 0; i--)
             $elifs.get(i).setElseStatement($elifs.get(i + 1));
         $stat = $elifs.get(0);
+        $stat.line = $key.line; $stat.col = $key.pos;
     }
     | s1=assignstatement { $stat= $s1.assign; }
     | s2=matchedWhileStatement { $stat= $s2.newWhile; }
@@ -133,86 +141,97 @@ matchedStat returns[Statement stat] locals[ArrayList<Conditional> elifs]:
 ;
 
 unmatchedStat returns[Statement stat] locals[ArrayList<Conditional> elifs]:
-    IF LPAREN condition=expression RPAREN then=statement
-    { $stat = new Conditional($condition.exp, $then.stat); }
+    key1=IF LPAREN condition=expression RPAREN then=statement
+    { $stat = new Conditional($condition.exp, $then.stat); $stat.line = $key1.line; $stat.col = $key1.pos;}
     | { $elifs = new ArrayList<>(); }
-    IF LPAREN e=expression RPAREN then2=matchedStat { $elifs.add(new Conditional($e.exp, $then2.stat)); }
+    key2=IF LPAREN e=expression RPAREN then2=matchedStat { $elifs.add(new Conditional($e.exp, $then2.stat)); }
     (ELIF LPAREN exp=expression RPAREN elifthen=matchedStat { $elifs.add(new Conditional($exp.exp, $elifthen.stat)); })*
     ELSE elze=unmatchedStat
-    {   $elifs.get($elifs.size() - 1).setElseStatement($elze.stat);
-            for(int i = $elifs.size() - 2; i >= 0; i--)
-                $elifs.get(i).setElseStatement($elifs.get(i + 1));
-            $stat = $elifs.get(0);
+    {
+        $elifs.get($elifs.size() - 1).setElseStatement($elze.stat);
+        for(int i = $elifs.size() - 2; i >= 0; i--)
+            $elifs.get(i).setElseStatement($elifs.get(i + 1));
+        $stat = $elifs.get(0);
+        $stat.line = $key2.line; $stat.col = $key2.pos;
     }
     | openWhile=unmatchedWhileStatement
     { $stat = $openWhile.newWhile; }
 ;
 
 breakstatement returns[Break newBreak]:
-    BREAK SEMICOLON { $newBreak=new Break(); }
+    key=BREAK SEMICOLON { $newBreak=new Break(); $newBreak.line = $key.line; $newBreak.col = $key.pos; }
 ;
 
 continuestatement returns[Continue newContinue]:
-    CONTINUE SEMICOLON{ $newContinue=new Continue(); }
+    key=CONTINUE SEMICOLON{ $newContinue=new Continue(); $newContinue.line = $key.line; $newContinue.col = $key.pos; }
 ;
 
 blockstatement returns [Block block]:
     { $block = new Block(); }
-    BEGIN (s=statement { $block.addStatement($s.stat); })*
-    END
+    key=BEGIN (s=statement { $block.addStatement($s.stat); })*
+    END { $block.line = $key.line; $block.col = $key.pos; }
 ;
 
 //can be deleted
 whilestatement returns[While newWhile]:
-    WHILE LPAREN exp=expression RPAREN stat=statement
-    { $newWhile = new While($exp.exp, $stat.stat); }
+    key=WHILE LPAREN exp=expression RPAREN stat=statement
+    { $newWhile = new While($exp.exp, $stat.stat); $newWhile.line = $key.line; $newWhile.col = $key.pos;}
 ;
 
 matchedWhileStatement returns[While newWhile]:
-    WHILE LPAREN exp=expression RPAREN stat=matchedStat
-    { $newWhile = new While($exp.exp, $stat.stat); }
+    key=WHILE LPAREN exp=expression RPAREN stat=matchedStat
+    { $newWhile = new While($exp.exp, $stat.stat); $newWhile.line = $key.line; $newWhile.col = $key.pos;}
 ;
 
 unmatchedWhileStatement returns[While newWhile]:
-    WHILE LPAREN exp=expression RPAREN stat=unmatchedStat
-    { $newWhile = new While($exp.exp, $stat.stat); }
+    key=WHILE LPAREN exp=expression RPAREN stat=unmatchedStat
+    { $newWhile = new While($exp.exp, $stat.stat); $newWhile.line = $key.line; $newWhile.col = $key.pos;}
 ;
 
 printstatement returns[PrintLine print]:
-    PRINT LPAREN exp=expression RPAREN SEMICOLON
-    { $print = new PrintLine($exp.exp); }
+    key=PRINT LPAREN exp=expression RPAREN SEMICOLON
+    { $print = new PrintLine($exp.exp); $print.line = $key.line; $print.col = $key.pos; }
 ;
 
 skipstatement returns[Skip skip]:
-    SEMICOLON
-    { $skip = new Skip(); }
+    semi=SEMICOLON
+    { $skip = new Skip(); $skip.line = $semi.line; $skip.col = $semi.pos; }
 ;
 
 returnstatement returns[Return r]:
-    RETURN exp=expression SEMICOLON
-    { $r = new Return($exp.exp); }
+    ret=RETURN exp=expression SEMICOLON
+    { $r = new Return($exp.exp); $r.line = $ret.line; $r.col = $ret.pos; }
 ;
 
 assignstatement returns[Assign assign]:
     lexp=expression ASSIGN rexp=expression SEMICOLON
-    { $assign = new Assign($lexp.exp, $rexp.exp); }
+    { $assign = new Assign($lexp.exp, $rexp.exp); $assign.line = $lexp.exp.line; $assign.col = $lexp.exp.col; }
 ;
 
 varstatement returns[LocalVarsDefinitions defs]:
     { $defs = new LocalVarsDefinitions(); }
-    VAR (newVar=id ASSIGN e=expression COMMA {$defs.addVarDefinition(new LocalVarDef($newVar.identifier, $e.exp)); })*
+    v=VAR (newVar=id ASSIGN e=expression COMMA {$defs.addVarDefinition(new LocalVarDef($newVar.identifier, $e.exp)); })*
     varName=id ASSIGN exp=expression SEMICOLON
-    {$defs.addVarDefinition(new LocalVarDef($varName.identifier, $exp.exp)); }
+    {
+        $defs.addVarDefinition(new LocalVarDef($varName.identifier, $exp.exp));
+        for(LocalVarDef definition : $defs.getVarDefinitions())
+        {
+            definition.line = $v.line;
+            definition.col = $v.pos;
+        }
+        $defs.line = $v.line;
+        $defs.col = $v.pos;
+    }
 ;
 
 incstatement returns[IncStatement inc]:
     exp=expression PLUSONE SEMICOLON
-    { $inc = new IncStatement($exp.exp); }
+    { $inc = new IncStatement($exp.exp); $inc.line = $exp.exp.line; $inc.col = $exp.exp.col; }
 ;
 
 decstatement returns[DecStatement dec]:
     exp=expression MINUSONE SEMICOLON
-    { $dec = new DecStatement($exp.exp); }
+    { $dec = new DecStatement($exp.exp); $dec.line = $exp.exp.line; $dec.col = $exp.exp.col; }
 ;
 
 expression returns[Expression exp]:
@@ -227,7 +246,7 @@ orExpression returns[Expression exp]:
 
 orExpressionTemp[Expression lhs] returns[Expression exp] locals[Or orExp]:
     OR rhs=andExpression { $orExp = new Or($lhs, $rhs.exp); } ortemp=orExpressionTemp[$orExp]
-    { $exp = $ortemp.exp; }
+    { $exp = $ortemp.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     |
     { $exp = $lhs; }
 ;
@@ -239,7 +258,7 @@ andExpression returns[Expression exp]:
 
 andExpressionTemp[Expression lhs] returns[Expression exp] locals[And andexp]:
     AND rhs=equalExpression { $andexp= new And($lhs, $rhs.exp); } andtemp=andExpressionTemp[$andexp]
-    { $exp = $andtemp.exp; }
+    { $exp = $andtemp.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     |
     { $exp = $lhs; }
 ;
@@ -251,11 +270,11 @@ equalExpression returns[Expression exp]:
 
 equalExpressionTemp[Expression lhs] returns[Expression exp] locals[Equals equalexp, NotEquals nequalexp]:
     EQUAL rhsEq=compExpression { $equalexp= new Equals($lhs, $rhsEq.exp); } eqTemp=equalExpressionTemp[$equalexp]
-    { $exp = $eqTemp.exp; }
+    { $exp = $eqTemp.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     | NOTEQUAL rhsNeq=compExpression {$nequalexp = new NotEquals($lhs, $rhsNeq.exp); } neqTemp=equalExpressionTemp[$nequalexp]
-    { $exp = $neqTemp.exp; }
+    { $exp = $neqTemp.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     |
-    { $exp = $lhs; }
+    { $exp = $lhs; $exp.line = $lhs.line; $exp.col = $lhs.col; }
 ;
 
 compExpression returns[Expression exp]:
@@ -265,9 +284,9 @@ compExpression returns[Expression exp]:
 
 compExpressionTemp[Expression lhs] returns[Expression exp] locals[LessThan less, GreaterThan greater]:
     LESSTHAN rhs=addExpression { $less = new LessThan($lhs, $rhs.exp); } comp=compExpressionTemp[$less]
-    { $exp = $comp.exp; }
+    { $exp = $comp.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     | GREATERTHAN rhs2=addExpression { $greater = new GreaterThan($lhs, $rhs2.exp); } comp2=compExpressionTemp[$greater]
-    { $exp = $comp2.exp; }
+    { $exp = $comp2.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     |
     { $exp = $lhs; }
 ;
@@ -279,9 +298,9 @@ addExpression returns[Expression exp]:
 
 addExpressionTemp[Expression lhs] returns[Expression exp] locals[Plus plus, Minus minus]:
     PLUS rhs=multExpression {$plus = new Plus($lhs, $rhs.exp); } add=addExpressionTemp[$plus]
-    { $exp = $add.exp; }
+    { $exp = $add.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     | MINUS rhs2=multExpression {$minus = new Minus($lhs, $rhs2.exp); } add2=addExpressionTemp[$minus]
-    { $exp = $add2.exp; }
+    { $exp = $add2.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     |
     { $exp = $lhs; }
 ;
@@ -293,20 +312,20 @@ multExpression returns[Expression exp]:
 
 multExpressionTemp[Expression lhs] returns[Expression exp] locals[Times t, Division d, Modulo m]:
     MULTIPLY rhs=unaryExpression {$t = new Times($lhs, $rhs.exp); } mult=multExpressionTemp[$t]
-    { $exp = $mult.exp; }
+    { $exp = $mult.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     | DIVIDE rhs2=unaryExpression {$d = new Division($lhs, $rhs2.exp); } mult2=multExpressionTemp[$d]
-    { $exp = $mult2.exp; }
+    { $exp = $mult2.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     | MODULO rhs3=unaryExpression {$m = new Modulo($lhs, $rhs3.exp); } mult3=multExpressionTemp[$m]
-    { $exp = $mult3.exp; }
+    { $exp = $mult3.exp; $exp.line = $lhs.line; $exp.col = $lhs.col; }
     |
     { $exp = $lhs; }
 ;
 
 unaryExpression returns[Expression exp]:
-    NOT u=unaryExpression
-    { $exp = new Not($u.exp); }
-    | MINUS u2=unaryExpression
-    { $exp = new Neg($u2.exp); }
+    n=NOT u=unaryExpression
+    { $exp = new Not($u.exp); $exp.line = $n.line; $exp.col = $n.pos; }
+    | m=MINUS u2=unaryExpression
+    { $exp = new Neg($u2.exp); $exp.line = $m.line; $exp.col = $m.pos; }
     | mem=memExpression
     { $exp = $mem.exp; }
 ;
@@ -318,7 +337,7 @@ memExpression returns[Expression exp]:
 
 memExpressionTemp[Expression instance] returns[Expression exp] locals[ArrayCall arrayCall]:
     LBRACKET index=expression RBRACKET {$arrayCall = new ArrayCall($instance, $index.exp); } mem=memExpressionTemp[$arrayCall]
-    { $exp = $mem.exp; }
+    { $exp = $mem.exp; $exp.line = $instance.line; $exp.col = $instance.col; }
     |
     { $exp = $instance; }
 ;
@@ -330,31 +349,31 @@ methodExpression returns[Expression exp]:
 
 methodExpressionTemp[Expression instance] returns[Expression exp] locals[MethodCall m, FieldCall f]:
     DOT name=id LPAREN RPAREN { $m = new MethodCall($instance, $name.identifier); } method=methodExpressionTemp[$m]
-    { $exp = $method.exp; }
+    { $exp = $method.exp; $exp.line = $instance.line; $exp.col = $instance.col; }
     | DOT name2=id LPAREN { $m = new MethodCall($instance, $name2.identifier); } (args=expression COMMA { $m.addArg($args.exp); } )* arg=expression { $m.addArg($arg.exp); } RPAREN method2=methodExpressionTemp[$m]
-    { $exp = $method2.exp; }
+    { $exp = $method2.exp; $exp.line = $instance.line; $exp.col = $instance.col; }
     | DOT name4=id { $f = new FieldCall($instance, $name4.identifier); } method4=methodExpressionTemp[$f]
-    { $exp = $method4.exp; }
+    { $exp = $method4.exp; $exp.line = $instance.line; $exp.col = $instance.col; }
     |
     { $exp = $instance; }
 ;
 
 otherExpression returns[Expression exp] locals[MethodCall m]:
-    a=INTLIT { $exp = new IntValue($a.int); }
-    | b=STRINGLIT { $exp = new StringValue($b.text); }
-    | FALSE { $exp = new BoolValue(false); }
-    | TRUE { $exp = new BoolValue(true); }
-    | SELF { $exp = new Self(); }
-    | NEW className=id LPAREN RPAREN { $exp = new NewClassInstance($className.identifier); }
-    | NEW INT LBRACKET len=expression RBRACKET { $exp = new NewArray(new IntType(), $len.exp); }
-    | NEW STRING LBRACKET len2=expression RBRACKET { $exp = new NewArray(new StringType(), $len2.exp); }
-    | NEW BOOL LBRACKET len3=expression RBRACKET { $exp = new NewArray(new BoolType(), $len3.exp); }
-    | NEW name=id LBRACKET len4=expression RBRACKET { $exp = new NewArray(new UserDefinedType(new ClassDeclaration($name.identifier)), $len4.exp); }
-    | var=id { $exp = $var.identifier; }
-    | name2=id LPAREN RPAREN { $exp = new MethodCall(new Self(), $name2.identifier); }
-    | name3=id LPAREN { $m = new MethodCall(new Self(), $name3.identifier); } (e=expression COMMA { $m.addArg($e.exp); } )* e2=expression RPAREN { $m.addArg($e2.exp); $exp = $m;}
-    | name4=id LBRACKET e2=expression RBRACKET { $exp = new ArrayCall($name4.identifier, $e2.exp); }
-    | LPAREN exp2=expression RPAREN { $exp = $exp2.exp; }
+    a=INTLIT { $exp = new IntValue($a.int); $exp.line = $a.line; $exp.col = $a.pos; }
+    | b=STRINGLIT { $exp = new StringValue($b.text); $exp.line = $b.line; $exp.col = $b.pos; }
+    | f=FALSE { $exp = new BoolValue(false); $exp.line = $f.line; $exp.col = $f.pos; }
+    | t=TRUE { $exp = new BoolValue(true); $exp.line = $t.line; $exp.col = $t.pos; }
+    | s=SELF { $exp = new Self(); }
+    | n=NEW className=id LPAREN RPAREN { $exp = new NewClassInstance($className.identifier); $exp.line = $n.line; $exp.col = $n.pos;}
+    | n1=NEW INT LBRACKET len=expression RBRACKET { $exp = new NewArray(new IntType(), $len.exp); $exp.line = $n1.line; $exp.col = $n1.pos; }
+    | n2=NEW STRING LBRACKET len2=expression RBRACKET { $exp = new NewArray(new StringType(), $len2.exp); $exp.line = $n2.line; $exp.col = $n2.pos;}
+    | n3=NEW BOOL LBRACKET len3=expression RBRACKET { $exp = new NewArray(new BoolType(), $len3.exp); $exp.line = $n3.line; $exp.col = $n3.pos;}
+    | n4=NEW name=id LBRACKET len4=expression RBRACKET { $exp = new NewArray(new UserDefinedType(new ClassDeclaration($name.identifier)), $len4.exp); $exp.line = $n4.line; $exp.col = $n4.pos;}
+    | var=id { $exp = $var.identifier; $exp.line = $var.identifier.line; $exp.col = $var.identifier.col;}
+    | name2=id LPAREN RPAREN { $exp = new MethodCall(new Self(), $name2.identifier); $exp.line = $name2.identifier.line; $exp.col = $name2.identifier.col;}
+    | name3=id LPAREN { $m = new MethodCall(new Self(), $name3.identifier); } (e=expression COMMA { $m.addArg($e.exp); } )* e2=expression RPAREN { $m.addArg($e2.exp); $exp = $m; $exp.line = $name3.identifier.line; $exp.col = $name3.identifier.col;}
+    | name4=id LBRACKET e2=expression RBRACKET { $exp = new ArrayCall($name4.identifier, $e2.exp); $exp.line = $name4.identifier.line; $exp.col = $name4.identifier.col;}
+    | LPAREN exp2=expression RPAREN { $exp = $exp2.exp; $exp.line = $exp2.exp.line; $exp.col = $exp2.exp.col;}
 ;
 
 INTLIT: [1-9][0-9]* | [0];
