@@ -29,7 +29,8 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(PrintLine printStat) {
         System.out.print("(print ");
         printStat.getArg().accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(printStat.line);
         return null;
     }
 
@@ -39,7 +40,8 @@ public class TreePrinter implements Visitor<Void> {
         assignStat.getLvalue().accept(this);
         System.out.print(" ");
         assignStat.getRvalue().accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(assignStat.line);
         return null;
     }
 
@@ -50,7 +52,8 @@ public class TreePrinter implements Visitor<Void> {
             stat.accept(this);
             System.out.print(" ");
         }
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(block.line);
         return null;
     }
 
@@ -72,7 +75,8 @@ public class TreePrinter implements Visitor<Void> {
             Skip empty=new Skip();
             empty.accept(this);
         }
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(condition.line);
         return null;
     }
 
@@ -82,7 +86,8 @@ public class TreePrinter implements Visitor<Void> {
         whileStat.expr.accept(this);
         System.out.print(" ");
         whileStat.body.accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(whileStat.line);
         return null;
     }
 
@@ -90,28 +95,32 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(Return returnStat) {
         System.out.print("(return ");
         returnStat.getReturnedExpr().accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(returnStat.line);
         return null;
     }
 
     @Override
     public Void visit(Break breakStat) {
         String string=breakStat.toString();
-        System.out.println(string);
+        System.out.print(string);
+        System.out.println(breakStat.line);
         return null;
     }
 
     @Override
     public Void visit(Continue continueStat) {
         String string=continueStat.toString();
-        System.out.println(string);
+        System.out.print(string);
+        System.out.println(continueStat.line);
         return null;
     }
 
     @Override
     public Void visit(Skip skip) {
         String string=skip.toString();
-        System.out.println(string);
+        System.out.print(string);
+        System.out.println(skip.line);
         return null;
     }
 
@@ -121,7 +130,8 @@ public class TreePrinter implements Visitor<Void> {
         localVarDef.getLocalVarName().accept(this);
         System.out.print(" ");
         localVarDef.getInitialValue().accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(localVarDef.line);
         return null;
     }
 
@@ -129,7 +139,8 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(IncStatement incStatement) {
         System.out.print("(++ ");
         incStatement.getOperand().accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(incStatement.line);
         return null;
     }
 
@@ -137,7 +148,8 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(DecStatement decStatement) {
         System.out.print("(-- ");
         decStatement.getOperand().accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(decStatement.line);
         return null;
     }
 
@@ -148,6 +160,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         plusExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(plusExpr.line);
         return null;
     }
 
@@ -158,6 +171,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         minusExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(minusExpr.line);
         return null;
     }
 
@@ -168,6 +182,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         timesExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(timesExpr.line);
         return null;
     }
 
@@ -178,6 +193,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         divExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(divExpr.line);
         return null;
     }
 
@@ -188,6 +204,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         moduloExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(moduloExpr.line);
         return null;
     }
 
@@ -198,6 +215,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         equalsExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.println(equalsExpr.line);
         return null;
     }
 
@@ -208,6 +226,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         gtExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(gtExpr.line);
         return null;
     }
 
@@ -218,6 +237,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         lessThanExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(lessThanExpr.line);
         return null;
     }
 
@@ -228,6 +248,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         andExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(andExpr.line);
         return null;
     }
 
@@ -238,6 +259,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         orExpr.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(orExpr.line);
         return null;
     }
 
@@ -246,6 +268,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print("(- ");
         negExpr.getExpr().accept(this);
         System.out.print(")");
+        System.out.print(negExpr.line);
         return null;
     }
 
@@ -254,6 +277,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print("(! ");
         notExpr.getExpr().accept(this);
         System.out.print(")");
+        System.out.print(notExpr.line);
         return null;
     }
 
@@ -269,7 +293,8 @@ public class TreePrinter implements Visitor<Void> {
                 System.out.print(" ");
             }
             System.out.print(")");
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(methodCall.line);
         return null;
     }
 
@@ -277,6 +302,7 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(Identifier identifier) {
         String string=identifier.toString();
         System.out.print(string);
+        System.out.println(identifier.line);
         return null;
     }
 
@@ -284,6 +310,7 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(Self self) {
         String string=self.toString();
         System.out.print(string);
+        System.out.print(self.line);
         return null;
     }
 
@@ -291,6 +318,7 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(IntValue intValue) {
         String string=intValue.toString();
         System.out.print(string);
+        System.out.print(intValue.line);
         return null;
     }
 
@@ -300,7 +328,8 @@ public class TreePrinter implements Visitor<Void> {
         String string = newArray.getType().toString();
         System.out.print(string+" ");
         newArray.getLength().accept(this);
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(newArray.line);
         return null;
     }
 
@@ -308,6 +337,7 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(BoolValue booleanValue) {
         String string=booleanValue.toString();
         System.out.print(string);
+        System.out.print(booleanValue.line);
         return null;
     }
 
@@ -315,6 +345,7 @@ public class TreePrinter implements Visitor<Void> {
     public Void visit(StringValue stringValue) {
         String string=stringValue.toString();
         System.out.print(string);
+        System.out.print(stringValue.line);
         return null;
     }
 
@@ -323,6 +354,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print("(new ");
         newClassInstance.getClassName().accept(this);
         System.out.print(")");
+        System.out.print(newClassInstance.line);
         return null;
     }
 
@@ -333,6 +365,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         fieldCall.getField().accept(this);
         System.out.print(")");
+        System.out.print(fieldCall.line);
         return null;
     }
 
@@ -343,6 +376,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         arrayCall.getIndex().accept(this);
         System.out.print(")");
+        System.out.print(arrayCall.line);
         return null;
     }
 
@@ -353,6 +387,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" ");
         notEquals.getRhs().accept(this);
         System.out.print(")");
+        System.out.print(notEquals.line);
         return null;
     }
 
@@ -370,7 +405,8 @@ public class TreePrinter implements Visitor<Void> {
             stat.accept(this);
             System.out.print(" ");
         }
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(classDeclaration.line);
         return null;
     }
 
@@ -388,7 +424,8 @@ public class TreePrinter implements Visitor<Void> {
             stat.accept(this);
             System.out.print(" ");
         }
-        System.out.println(")");
+        System.out.print(")");
+        System.out.print(entryClassDeclaration.line);
         return null;
     }
 
@@ -403,7 +440,8 @@ public class TreePrinter implements Visitor<Void> {
         if(fieldDeclaration.getType()!=null){
             System.out.print(fieldDeclaration.getType().toString());
         }
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(fieldDeclaration.line);
         return null;
     }
 
@@ -414,6 +452,7 @@ public class TreePrinter implements Visitor<Void> {
         System.out.print(" : ");
         System.out.print(parameterDeclaration.getType().toString());
         System.out.print(")");
+        System.out.print(parameterDeclaration.line);
         return null;
     }
 
@@ -438,7 +477,8 @@ public class TreePrinter implements Visitor<Void> {
             System.out.print(" ");
         }
         System.out.println(")");
-        System.out.println(")");
+        System.out.print(")");
+        System.out.println(methodDeclaration.line);
         return null;
     }
 
@@ -448,6 +488,7 @@ public class TreePrinter implements Visitor<Void> {
         for(LocalVarDef var:vars) {
             var.accept(this);
         }
+        System.out.println(localVarsDefinitions.line);
         return null;
     }
 
@@ -459,6 +500,7 @@ public class TreePrinter implements Visitor<Void> {
             program_class.accept(this);
         }
         System.out.println(")");
+        System.out.print(program.line);
         return null;
     }
 }
