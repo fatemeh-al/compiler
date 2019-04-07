@@ -154,6 +154,17 @@ unmatchedStat returns[Statement stat] locals[ArrayList<Conditional> elifs]:
         $stat = $elifs.get(0);
         $stat.line = $key2.line; $stat.col = $key2.pos;
     }
+    | { $elifs = new ArrayList<>(); }
+    key3=IF LPAREN e2=expression RPAREN then3=matchedStat { $elifs.add(new Conditional($e2.exp, $then3.stat)); }
+    (ELIF LPAREN e3=expression RPAREN elifthen2=matchedStat { $elifs.add(new Conditional($e3.exp, $elifthen2.stat)); } )*
+    ELIF LPAREN e4=expression RPAREN elifthen3=statement
+    {
+         $elifs.add(new Conditional($e4.exp, $elifthen3.stat));
+         for(int i = $elifs.size() - 2; i >= 0; i--)
+              $elifs.get(i).setElseStatement($elifs.get(i + 1));
+         $stat = $elifs.get(0);
+         $stat.line = $key3.line; $stat.col = $key3.pos;
+    }
     | openWhile=unmatchedWhileStatement
     { $stat = $openWhile.newWhile; }
 ;
