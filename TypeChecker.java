@@ -20,15 +20,14 @@ import toorla.ast.statement.localVarStats.LocalVarDef;
 import toorla.ast.statement.localVarStats.LocalVarsDefinitions;
 import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
+import toorla.symbolTable.exceptions.ItemAlreadyExistsException;
 import toorla.symbolTable.exceptions.ItemNotFoundException;
 import toorla.types.Type;
 import toorla.symbolTable.symbolTableItem.varItems.*;
 import toorla.symbolTable.symbolTableItem.*;
 import toorla.types.UndefinedType;
-import toorla.types.singleType.BoolType;
-import toorla.types.singleType.IntType;
-import toorla.types.singleType.StringType;
-import toorla.types.singleType.UserDefinedType;
+import toorla.types.arrayType.ArrayType;
+import toorla.types.singleType.*;
 
 public class TypeChecker implements Visitor<Type> {
 
@@ -390,6 +389,69 @@ public class TypeChecker implements Visitor<Type> {
     }
 
     @Override
+    public Type visit(FieldDeclaration fieldDeclaration) {
+        //What to do here????
+        return null;
+    }
+
+    @Override
+    public Type visit(LocalVarsDefinitions localVarsDefinitions) {
+        for(LocalVarDef def: localVarsDefinitions.getVarDefinitions())
+            def.accept(this);
+        return null;
+    }
+
+    @Override
+    public Type visit(LocalVarDef localVarDef) {
+        Type initialType = localVarDef.getInitialValue().accept(this);
+        VarSymbolTableItem localVar = new VarSymbolTableItem();
+        localVar.setName(localVarDef.getLocalVarName().getName());
+        localVar.setVarType(initialType);
+        try{
+            SymbolTable.top().put(localVar);
+        }catch(ItemAlreadyExistsException e){
+        }
+        return null;
+    }
+
+    @Override
+    public Type visit(NewArray newArray) {
+        Type lengthType = newArray.getLength().accept(this);
+        SingleType arrayType = newArray.getType();
+        if(!(lengthType.toString().equals("(IntType)") || lengthType.toString().equals("(UndefinedType)")))
+            System.out.println("Error:Line:" + newArray.line + ":;");
+        return new ArrayType(arrayType);
+    }
+
+    @Override
+    public Type visit(ArrayCall arrayCall) {
+        Type instanceType = arrayCall.getInstance().accept(this);
+        Type arraySingle = new UndefinedType();
+        if(instanceType.toString().startsWith("(ArrayType"))
+            arraySingle = ((ArrayType)instanceType).getSingleType();
+        else if(!instanceType.toString().equals("(UndefinedType)"))
+            System.out.println("Error:Line:" + arrayCall.line + ":;");
+        Type indexType = arrayCall.getIndex().accept(this);
+        if(!indexType.toString().equals("(IntType)") && !indexType.toString().equals("(UndefinedType)"))
+            System.out.println("Error:Line:" + arrayCall.line + ":;");
+        arraySingle.setLvalue();
+        return arraySingle;
+    }
+
+    @Override
+    public Type visit(ParameterDeclaration parameterDeclaration) {
+        Type parameterType = parameterDeclaration.getType();
+        try{
+            VarSymbolTableItem parameter = new VarSymbolTableItem();
+            parameter.setName(parameterDeclaration.getIdentifier().getName());
+            parameter.setVarType(parameterType);
+            SymbolTable.top().put(parameter);
+        }catch(ItemAlreadyExistsException e){
+        }
+        return null;
+    }
+
+    @Override
     public Type visit(MethodCall methodCall) {
         return null;
     }
@@ -405,27 +467,12 @@ public class TypeChecker implements Visitor<Type> {
     }
 
     @Override
-    public Type visit(NewArray newArray) {
-        return null;
-    }
-
-    @Override
     public Type visit(NewClassInstance newClassInstance) {
         return null;
     }
 
     @Override
     public Type visit(FieldCall fieldCall) {
-        return null;
-    }
-
-    @Override
-    public Type visit(ArrayCall arrayCall) {
-        return null;
-    }
-
-    @Override
-    public Type visit(LocalVarDef localVarDef) {
         return null;
     }
 
@@ -440,22 +487,7 @@ public class TypeChecker implements Visitor<Type> {
     }
 
     @Override
-    public Type visit(FieldDeclaration fieldDeclaration) {
-        return null;
-    }
-
-    @Override
-    public Type visit(ParameterDeclaration parameterDeclaration) {
-        return null;
-    }
-
-    @Override
     public Type visit(MethodDeclaration methodDeclaration) {
-        return null;
-    }
-
-    @Override
-    public Type visit(LocalVarsDefinitions localVarsDefinitions) {
         return null;
     }
 }
