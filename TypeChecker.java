@@ -46,6 +46,9 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(Program program) {
+
+        for(ClassDeclaration cd: program.getClasses())
+            cd.accept(this);
         return null;
     }
 
@@ -507,7 +510,7 @@ public class TypeChecker implements Visitor<Type> {
                         }
                     }
                     AccessModifier access = methodItem.getAccessModifier();
-                    if(access.toString().equals("(private)") && !methodCall.getInstance().toString().equals("(Self)"))
+                    if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !methodCall.getInstance().toString().equals("(Self)"))
                     {
                         System.out.println("Error:Line:" + methodCall.line + ":;");
                         return new UndefinedType();
@@ -535,7 +538,7 @@ public class TypeChecker implements Visitor<Type> {
                 try{
                     FieldSymbolTableItem fieldItem  = (FieldSymbolTableItem)classSymbolTable.get("var_" + fieldName);
                     AccessModifier access = fieldItem.getAccessModifier();
-                    if(access.toString().equals("(private)") && !fieldCall.toString().equals("(Self)")){
+                    if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !fieldCall.toString().equals("(Self)")){
                         System.out.println("Error:Line:" + fieldCall.line + ":;");
                         return new UndefinedType();
                     }
@@ -562,13 +565,12 @@ public class TypeChecker implements Visitor<Type> {
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
         VarSymbolTableItem returnItem = new VarSymbolTableItem();
         Type returnType = methodDeclaration.getReturnType();
-        if(returnType.toString().startsWith("(UserDefinedType")) {
-            String retClassName = returnType.toString().substring(16, returnType.toString().indexOf(")"));
-            System.out.println("RETCLASS RO IN PEYDA KARDAM   :" + retClassName);
+        if(returnType.toString().startsWith("(UserDefined")) {
+            String retClassName = returnType.toString().substring(13, returnType.toString().indexOf(")"));
             try{
                 SymbolTableItem retClassItem = SymbolTable.root.get("class_" + retClassName);
             }catch(ItemNotFoundException e1){
-                System.out.println("Error:Line:" + methodDeclaration.getName().line + ":;");
+                System.out.println("Error1:Line:" + methodDeclaration.getName().line + ":;");
                 returnType = new UndefinedType();
             }
         }
@@ -581,12 +583,12 @@ public class TypeChecker implements Visitor<Type> {
         for(ParameterDeclaration arg: methodDeclaration.getArgs()){
             VarSymbolTableItem argItem = new VarSymbolTableItem();
             argItem.setVarType(arg.getType());
-            if(arg.getType().toString().startsWith("(UserDefinedType")) {
-                String argCLassName = arg.getType().toString().substring(16, arg.getType().toString().indexOf(")"));
+            if(arg.getType().toString().startsWith("(UserDefined")) {
+                String argCLassName = arg.getType().toString().substring(13, arg.getType().toString().indexOf(")"));
                 try{
                     SymbolTableItem argClassItem = SymbolTable.root.get("class_" + argCLassName);
                 }catch(ItemNotFoundException e4){
-                    System.out.println("Error:Line:" + methodDeclaration.getName().line + ":;");
+                    System.out.println("Error:Line:" + methodDeclaration.getName().line + ":Class " + argCLassName + " does not exist!");
                     argItem.setVarType(new UndefinedType());
                 }
             }
@@ -649,8 +651,8 @@ public class TypeChecker implements Visitor<Type> {
                 MethodSymbolTableItem mainItem = (MethodSymbolTableItem)(SymbolTable.top().get("method_main"));
                 if(!mainItem.getReturnType().toString().equals("(IntType)")
                         || mainItem.getArgumentsTypes().size() != 0
-                        || !mainItem.getAccessModifier().toString().equals("(public)"))
-                    System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":;");
+                        || !mainItem.getAccessModifier().toString().equals("(ACCESS_MODIFIER_PUBLIC)"))
+                    System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":b;");
             }catch(ItemNotFoundException e3){
                 System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":;");
             }
@@ -662,7 +664,4 @@ public class TypeChecker implements Visitor<Type> {
     }
 }
 
-
 //Tooye newClassInstance ke mikham begiram, bayad havasam bashe pedar dare ya ne?
-//az to stringe AccessModifier motmaen nistam tooye methodCall va tooye fieldCall
-//bebin classa voojood dashte bashan to methodDeclaration ba subString
