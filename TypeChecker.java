@@ -29,6 +29,7 @@ import toorla.types.UndefinedType;
 import toorla.types.arrayType.ArrayType;
 import toorla.types.singleType.*;
 import toorla.utilities.graph.Graph;
+import toorla.utilities.graph.GraphDoesNotContainNodeException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,16 +47,37 @@ public class TypeChecker implements Visitor<Type> {
     }
 
     public boolean subTypeChecker(Type child, Type parent) {
-        //Havaset bashe Undefined subType e hame hast va hame subType esh hastan
-        //yani age child ya parent Undefined boodan, ghatan okeye va true barmigardoone
-        return true;
+        if(child.toString().startsWith("(UserDefined") && parent.toString().startsWith("(UserDefined")){
+            String childName=((UserDefinedType)child).getClassDeclaration().getName().getName();
+            String parentName=((UserDefinedType)parent).getClassDeclaration().getName().getName();
+            try{
+                if(inheritanceGraph.getParentsOfNode(childName).contains(parentName))
+                    return true;
+                else
+                    return false;
+            }catch (GraphDoesNotContainNodeException e){System.out.println("Error:"+((UserDefinedType)child).getClassDeclaration().getName().line+":Class "+((UserDefinedType)child).getClassDeclaration().getName().getName()+"doesn't exist;");}
+        }
+        if(child.toString().equals("(UndefinedType)") || parent.toString().equals("(UndefinedType)"))
+            return true;
+        if(child.toString().equals(parent.toString()))
+            return true;
+        return false;
     }
 
     @Override
     public Type visit(Program program) {
 
-        for(ClassDeclaration cd: program.getClasses())
+        for(ClassDeclaration cd: program.getClasses()){
+            try {
+                for (String parent : inheritanceGraph.getParentsOfNode(cd.getName().getName()))
+                    if (parent.equals(cd.getName().getName())) {
+                        this.numOfErrors++;
+                        System.out.println("Error:" + cd.getName().line + ":class " + cd.getName().getName() + " has inheritace loop;");
+                    }
+            }
+            catch (GraphDoesNotContainNodeException e){}
             cd.accept(this);
+        }
 
         if(this.numOfErrors == 0)
             System.out.println("No error detected;");
@@ -92,8 +114,8 @@ public class TypeChecker implements Visitor<Type> {
     @Override
     public Type visit(Block block) {
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
-        for(Statement stat: block.body)
-            stat.accept(this);
+        for(int i = 0; i < block.body.size(); i++)
+            block.body.get(i).accept(this);
         SymbolTable.pop();
         return null;
     }
@@ -102,14 +124,14 @@ public class TypeChecker implements Visitor<Type> {
     public Type visit(Conditional conditional) {
         Type condType = conditional.getCondition().accept(this);
         if(!(condType.toString().equals("(BoolType)") || condType.toString().equals("(UndefinedType)"))) {
-            System.out.println("Error:Line:" + conditional.line + ":Condition type must be bool in Conditional statements;");
+            System.out.println("Error:Line:" + conditional.getCondition().line + ":Condition type must be bool in Conditional statements;");
             this.numOfErrors++;
         }
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
         conditional.getThenStatement().accept(this);
         SymbolTable.pop();
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
-        conditional.getThenStatement().accept(this);
+        conditional.getElseStatement().accept(this);
         SymbolTable.pop();
         return null;
     }
@@ -119,7 +141,7 @@ public class TypeChecker implements Visitor<Type> {
         this.inLoop = true;
         Type condType = whileStat.expr.accept(this);
         if(!(condType.toString().equals("(BoolType)") || condType.toString().equals("(UndefinedType)"))) {
-            System.out.println("Error:Line:" + whileStat.line + ":Condition type must be bool in Loop statements;");
+            System.out.println("Error:Line:" + whileStat.expr.line + ":Condition type must be bool in Loop statements;");
             this.numOfErrors++;
         }
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
@@ -258,7 +280,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = gtExpr.getLhs().accept(this);
         Type rhs = gtExpr.getRhs().accept(this);
         if(lhs.toString().equals("(IntType)") && rhs.toString().equals("(IntType)"))
-            return lhs;
+            return new BoolType();
         else if((lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(IntType)"))
                 || (lhs.toString().equals("(IntType)") && rhs.toString().equals("(UndefinedType)"))
                 || (lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(UndefinedType)")))
@@ -275,7 +297,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = ltExpr.getLhs().accept(this);
         Type rhs = ltExpr.getRhs().accept(this);
         if(lhs.toString().equals("(IntType)") && rhs.toString().equals("(IntType)"))
-            return lhs;
+            return new BoolType();
         else if((lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(IntType)"))
                 || (lhs.toString().equals("(IntType)") && rhs.toString().equals("(UndefinedType)"))
                 || (lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(UndefinedType)")))
@@ -354,7 +376,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = equalsExpr.getLhs().accept(this);
         Type rhs = equalsExpr.getRhs().accept(this);
         if(lhs.toString().equals(rhs.toString()))
-            return lhs;
+            return new BoolType();
         else if(lhs.toString().equals("(UndefinedType)") || rhs.toString().equals("(UndefinedType)"))
             return new UndefinedType();
         else {
@@ -369,7 +391,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = notEquals.getLhs().accept(this);
         Type rhs = notEquals.getRhs().accept(this);
         if(lhs.toString().equals(rhs.toString()))
-            return lhs;
+            return new BoolType();
         else if(lhs.toString().equals("(UndefinedType)") || rhs.toString().equals("(UndefinedType)"))
             return new UndefinedType();
         else {
@@ -449,6 +471,7 @@ public class TypeChecker implements Visitor<Type> {
     @Override
     public Type visit(LocalVarDef localVarDef) {
         Type initialType = localVarDef.getInitialValue().accept(this);
+        initialType.setLvalue();
         VarSymbolTableItem localVar = new VarSymbolTableItem();
         localVar.setName(localVarDef.getLocalVarName().getName());
         localVar.setVarType(initialType);
@@ -492,6 +515,7 @@ public class TypeChecker implements Visitor<Type> {
     @Override
     public Type visit(ParameterDeclaration parameterDeclaration) {
         Type parameterType = parameterDeclaration.getType();
+        parameterType.setLvalue();
         try{
             VarSymbolTableItem parameter = new VarSymbolTableItem();
             parameter.setName(parameterDeclaration.getIdentifier().getName());
@@ -548,14 +572,14 @@ public class TypeChecker implements Visitor<Type> {
                     MethodSymbolTableItem methodItem = (MethodSymbolTableItem) classSymbolTable.get("method_" + methodName);
                     List<Type> argTypes = methodItem.getArgumentsTypes();
                     if (argTypes.size() != args.size()){
-                        System.out.println("Error:Line:" + methodCall.line + ":Method " + methodName + " with this definition does not exist;");
+                        System.out.println("Error:Line:" + methodCall.line + ":There is no Method with name " + methodName + " with such parameters in class " + className + ";");
                         this.numOfErrors++;
                         return new UndefinedType();
                     }
                     for(int i = 0; i < args.size(); i++){
                         Type singleArgType = args.get(i).accept(this);
                         if(!subTypeChecker(singleArgType, argTypes.get(i))){
-                            System.out.println("Error:Line:" + methodCall.line + ":Method " + methodName + " with this definition does not exist;");
+                            System.out.println("Error:Line:" + methodCall.line + ":There is no Method with name " + methodName + " with such parameters in class " + className + ";");
                             this.numOfErrors++;
                             return new UndefinedType();
                         }
@@ -634,7 +658,7 @@ public class TypeChecker implements Visitor<Type> {
             }
         }
         returnItem.setVarType(returnType);
-        returnItem.setName("$ret");
+        returnItem.setName("var_$ret");
         try{
             SymbolTable.top().put(returnItem);
         }catch(ItemAlreadyExistsException e2){
@@ -731,6 +755,7 @@ public class TypeChecker implements Visitor<Type> {
     }
 }
 
-//Tooye newClassInstance ke mikham begiram, bayad havasam bashe pedar dare ya ne?
 //Return error statement
-//inheritance loop va subType check kardan moonde
+//fieldCall dorost Lvalue nemishe
+//Self ghalate
+//Ye errore null pointer dare. daram migardam peydash konam
