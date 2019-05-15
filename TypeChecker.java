@@ -178,7 +178,7 @@ public class TypeChecker implements Visitor<Type> {
     public Type visit(Return returnStat) {
         Type retType = returnStat.getReturnedExpr().accept(this);
         try{
-            VarSymbolTableItem retItem = (VarSymbolTableItem)SymbolTable.top().get("$ret");
+            VarSymbolTableItem retItem = (VarSymbolTableItem)SymbolTable.top().get("var_$ret");
             Type methodRetType = retItem.getVarType();
             //WHAT TO WRITE AS METHoD RETURN TYPE
             if(!subTypeChecker(retType, methodRetType)) {
@@ -658,7 +658,7 @@ public class TypeChecker implements Visitor<Type> {
             }
         }
         returnItem.setVarType(returnType);
-        returnItem.setName("var_$ret");
+        returnItem.setName("$ret");
         try{
             SymbolTable.top().put(returnItem);
         }catch(ItemAlreadyExistsException e2){
@@ -758,4 +758,3 @@ public class TypeChecker implements Visitor<Type> {
 //Return error statement
 //fieldCall dorost Lvalue nemishe
 //Self ghalate
-//Ye errore null pointer dare. daram migardam peydash konam
