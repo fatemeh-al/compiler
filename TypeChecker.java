@@ -1,6 +1,5 @@
 package toorla.visitor;
 
-import sun.awt.Symbol;
 import toorla.ast.Program;
 import toorla.ast.declaration.classDecs.ClassDeclaration;
 import toorla.ast.declaration.classDecs.EntryClassDeclaration;
@@ -564,24 +563,37 @@ public class TypeChecker implements Visitor<Type> {
         VarSymbolTableItem returnItem = new VarSymbolTableItem();
         Type returnType = methodDeclaration.getReturnType();
         if(returnType.toString().startsWith("(UserDefinedType")) {
-            //bebin classe voojood dashte bashe
+            String retClassName = returnType.toString().substring(16, returnType.toString().indexOf(")"));
+            System.out.println("RETCLASS RO IN PEYDA KARDAM   :" + retClassName);
+            try{
+                SymbolTableItem retClassItem = SymbolTable.root.get("class_" + retClassName);
+            }catch(ItemNotFoundException e1){
+                System.out.println("Error:Line:" + methodDeclaration.getName().line + ":;");
+                returnType = new UndefinedType();
+            }
         }
         returnItem.setVarType(returnType);
         returnItem.setName("$ret");
         try{
             SymbolTable.top().put(returnItem);
-        }catch(ItemAlreadyExistsException e){
+        }catch(ItemAlreadyExistsException e2){
         }
         for(ParameterDeclaration arg: methodDeclaration.getArgs()){
             VarSymbolTableItem argItem = new VarSymbolTableItem();
             argItem.setVarType(arg.getType());
             if(arg.getType().toString().startsWith("(UserDefinedType")) {
-                //bebin classe voojood dashte bashe
+                String argCLassName = arg.getType().toString().substring(16, arg.getType().toString().indexOf(")"));
+                try{
+                    SymbolTableItem argClassItem = SymbolTable.root.get("class_" + argCLassName);
+                }catch(ItemNotFoundException e4){
+                    System.out.println("Error:Line:" + methodDeclaration.getName().line + ":;");
+                    argItem.setVarType(new UndefinedType());
+                }
             }
             argItem.setName(arg.getIdentifier().getName());
             try{
                 SymbolTable.top().put(argItem);
-            }catch(ItemAlreadyExistsException e){
+            }catch(ItemAlreadyExistsException e3){
             }
         }
         for(Statement stat: methodDeclaration.getBody())
@@ -592,11 +604,60 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(ClassDeclaration classDeclaration) {
+        try{
+            ClassSymbolTableItem classItem = (ClassSymbolTableItem)SymbolTable.root.get("class_" + classDeclaration.getName().getName());
+            SymbolTable classSym = classItem.getSymbolTable();
+            if(classDeclaration.getParentName().getName() != null) {
+                try {
+                    SymbolTableItem parentItem = SymbolTable.root.get("class_" + classDeclaration.getParentName().getName());
+                } catch (ItemNotFoundException e1) {
+                    System.out.println("Error:Line:" + classDeclaration.getName().line + ":;");
+                    try{
+                        ClassSymbolTableItem anyItem = (ClassSymbolTableItem) SymbolTable.root.get("class_Any");
+                        classSym.setPreSymbolTable(anyItem.getSymbolTable());
+                    }catch (ItemNotFoundException e4){
+                    }
+                }
+            }
+            SymbolTable.push(classSym);
+            for(ClassMemberDeclaration member: classDeclaration.getClassMembers())
+                member.accept(this);
+        }catch(ItemNotFoundException e2){
+        }
         return null;
     }
 
     @Override
     public Type visit(EntryClassDeclaration entryClassDeclaration) {
+        try{
+            ClassSymbolTableItem classItem = (ClassSymbolTableItem)SymbolTable.root.get("class_" + entryClassDeclaration.getName().getName());
+            SymbolTable classSym = classItem.getSymbolTable();
+            if(entryClassDeclaration.getParentName().getName() != null) {
+                try {
+                    SymbolTableItem parentItem = SymbolTable.root.get("class_" + entryClassDeclaration.getParentName().getName());
+                } catch (ItemNotFoundException e1) {
+                    System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":;");
+                    try{
+                        ClassSymbolTableItem anyItem = (ClassSymbolTableItem) SymbolTable.root.get("class_Any");
+                        classSym.setPreSymbolTable(anyItem.getSymbolTable());
+                    }catch (ItemNotFoundException e4){
+                    }
+                }
+            }
+            SymbolTable.push(classSym);
+            try{
+                MethodSymbolTableItem mainItem = (MethodSymbolTableItem)(SymbolTable.top().get("method_main"));
+                if(!mainItem.getReturnType().toString().equals("(IntType)")
+                        || mainItem.getArgumentsTypes().size() != 0
+                        || !mainItem.getAccessModifier().toString().equals("(public)"))
+                    System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":;");
+            }catch(ItemNotFoundException e3){
+                System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":;");
+            }
+            for(ClassMemberDeclaration member: entryClassDeclaration.getClassMembers())
+                member.accept(this);
+        }catch(ItemNotFoundException e2){
+        }
         return null;
     }
 }
