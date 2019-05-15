@@ -4,6 +4,7 @@ import sun.awt.Symbol;
 import toorla.ast.Program;
 import toorla.ast.declaration.classDecs.ClassDeclaration;
 import toorla.ast.declaration.classDecs.EntryClassDeclaration;
+import toorla.ast.declaration.classDecs.classMembersDecs.AccessModifier;
 import toorla.ast.declaration.classDecs.classMembersDecs.ClassMemberDeclaration;
 import toorla.ast.declaration.classDecs.classMembersDecs.FieldDeclaration;
 import toorla.ast.declaration.classDecs.classMembersDecs.MethodDeclaration;
@@ -29,6 +30,9 @@ import toorla.types.UndefinedType;
 import toorla.types.arrayType.ArrayType;
 import toorla.types.singleType.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TypeChecker implements Visitor<Type> {
 
     private boolean inLoop;
@@ -37,8 +41,7 @@ public class TypeChecker implements Visitor<Type> {
         this.inLoop = false;
     }
 
-    public boolean subTypeChecker(Type child, Type parent)
-    {
+    public boolean subTypeChecker(Type child, Type parent) {
         return true;
     }
 
@@ -390,7 +393,6 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(FieldDeclaration fieldDeclaration) {
-        //What to do here????
         return null;
     }
 
@@ -452,13 +454,15 @@ public class TypeChecker implements Visitor<Type> {
     }
 
     @Override
-    public Type visit(MethodCall methodCall) {
-        return null;
-    }
-
-    @Override
     public Type visit(Identifier identifier) {
-        return null;
+        String name = identifier.getName();
+        try {
+            VarSymbolTableItem item = (VarSymbolTableItem)(SymbolTable.top().get("var_" + name));
+            return item.getVarType();
+        }catch(ItemNotFoundException e){
+            System.out.println("Error:Line:" + identifier.line + ":;");
+            return new UndefinedType();
+        }
     }
 
     @Override
@@ -468,11 +472,121 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(NewClassInstance newClassInstance) {
-        return null;
+        String className = newClassInstance.getClassName().getName();
+        try {
+            SymbolTableItem item = SymbolTable.root.get("class_" + className);
+            Type classType = new UserDefinedType(new ClassDeclaration(newClassInstance.getClassName()));
+            return classType;
+        }catch(ItemNotFoundException e){
+            System.out.println("Error:Line:" + newClassInstance.line + ":;");
+            return new UndefinedType();
+        }
+    }
+
+    @Override
+    public Type visit(MethodCall methodCall) {
+        Type instanceType = methodCall.getInstance().accept(this);
+        String methodName = methodCall.getMethodName().getName();
+        ArrayList<Expression> args = methodCall.getArgs();
+        if(instanceType.toString().startsWith("(UserDefined")){
+            String className = ((UserDefinedType)instanceType).getClassDeclaration().getName().getName();
+            try{
+                ClassSymbolTableItem classItem = (ClassSymbolTableItem) SymbolTable.root.get("class_" + className);
+                SymbolTable classSymbolTable = classItem.getSymbolTable();
+                try{
+                    MethodSymbolTableItem methodItem = (MethodSymbolTableItem) classSymbolTable.get("method_" + methodName);
+                    List<Type> argTypes = methodItem.getArgumentsTypes();
+                    if (argTypes.size() != args.size()){
+                        System.out.println("Error:Line:" + methodCall.line + ":;");
+                        return new UndefinedType();
+                    }
+                    for(int i = 0; i < args.size(); i++){
+                        Type singleArgType = args.get(i).accept(this);
+                        if(!subTypeChecker(singleArgType, argTypes.get(i))){
+                            System.out.println("Error:Line:" + methodCall.line + ":;");
+                            return new UndefinedType();
+                        }
+                    }
+                    AccessModifier access = methodItem.getAccessModifier();
+                    if(access.toString().equals("(private)") && !methodCall.getInstance().toString().equals("(Self)"))
+                    {
+                        System.out.println("Error:Line:" + methodCall.line + ":;");
+                        return new UndefinedType();
+                    }
+                    return methodItem.getReturnType();
+                }catch(ItemNotFoundException e2){
+                    System.out.println("Error:Line:" + methodCall.line + ":;");
+                }
+            }catch(ItemNotFoundException e1){
+                System.out.println("Error:Line:" + methodCall.line + ":;");
+            }
+        }
+        return new UndefinedType();
     }
 
     @Override
     public Type visit(FieldCall fieldCall) {
+        Type instanceType = fieldCall.getInstance().accept(this);
+        String fieldName = fieldCall.getField().getName();
+        if(instanceType.toString().startsWith("(UserDefined")){
+            String className = ((UserDefinedType)instanceType).getClassDeclaration().getName().getName();
+            try{
+                ClassSymbolTableItem classItem = (ClassSymbolTableItem) SymbolTable.root.get("class_" + className);
+                SymbolTable classSymbolTable = classItem.getSymbolTable();
+                try{
+                    FieldSymbolTableItem fieldItem  = (FieldSymbolTableItem)classSymbolTable.get("var_" + fieldName);
+                    AccessModifier access = fieldItem.getAccessModifier();
+                    if(access.toString().equals("(private)") && !fieldCall.toString().equals("(Self)")){
+                        System.out.println("Error:Line:" + fieldCall.line + ":;");
+                        return new UndefinedType();
+                    }
+                    return fieldItem.getVarType();
+                }catch(ItemNotFoundException e2){
+                    System.out.println("Error:Line:" + fieldCall.line + ":;");
+                }
+            }catch(ItemNotFoundException e1){
+                System.out.println("Error:Line:" + fieldCall.line + ":;");
+            }
+        }
+        else if(instanceType.toString().startsWith("(ArrayType")){
+            if(!fieldName.equals("length")){
+                System.out.println("Error:Line:" + fieldCall.line + ":;");
+                return new UndefinedType();
+            }
+            return new IntType();
+        }
+        return new UndefinedType();
+    }
+
+    @Override
+    public Type visit(MethodDeclaration methodDeclaration) {
+        SymbolTable.push(new SymbolTable(SymbolTable.top()));
+        VarSymbolTableItem returnItem = new VarSymbolTableItem();
+        Type returnType = methodDeclaration.getReturnType();
+        if(returnType.toString().startsWith("(UserDefinedType")) {
+            //bebin classe voojood dashte bashe
+        }
+        returnItem.setVarType(returnType);
+        returnItem.setName("$ret");
+        try{
+            SymbolTable.top().put(returnItem);
+        }catch(ItemAlreadyExistsException e){
+        }
+        for(ParameterDeclaration arg: methodDeclaration.getArgs()){
+            VarSymbolTableItem argItem = new VarSymbolTableItem();
+            argItem.setVarType(arg.getType());
+            if(arg.getType().toString().startsWith("(UserDefinedType")) {
+                //bebin classe voojood dashte bashe
+            }
+            argItem.setName(arg.getIdentifier().getName());
+            try{
+                SymbolTable.top().put(argItem);
+            }catch(ItemAlreadyExistsException e){
+            }
+        }
+        for(Statement stat: methodDeclaration.getBody())
+            stat.accept(this);
+        SymbolTable.pop();
         return null;
     }
 
@@ -485,9 +599,9 @@ public class TypeChecker implements Visitor<Type> {
     public Type visit(EntryClassDeclaration entryClassDeclaration) {
         return null;
     }
-
-    @Override
-    public Type visit(MethodDeclaration methodDeclaration) {
-        return null;
-    }
 }
+
+
+//Tooye newClassInstance ke mikham begiram, bayad havasam bashe pedar dare ya ne?
+//az to stringe AccessModifier motmaen nistam tooye methodCall va tooye fieldCall
+//bebin classa voojood dashte bashan to methodDeclaration ba subString
