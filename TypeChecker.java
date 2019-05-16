@@ -236,7 +236,7 @@ public class TypeChecker implements Visitor<Type> {
             else
                 returnString="";
             if(!subTypeChecker(retType, methodRetType)) {
-                System.out.println("Error:Line:" + returnStat.line + ":Expression returned by this method must be" + returnString +";");
+                System.out.println("Error:Line:" + returnStat.line + ":Expression returned by this method must be " + returnString +";");
                 this.numOfErrors++;
             }
         }catch(ItemNotFoundException e) {
