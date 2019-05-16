@@ -48,20 +48,22 @@ public class TypeChecker implements Visitor<Type> {
     }
 
     public boolean subTypeChecker(Type child, Type parent) {
-        if(child.toString().startsWith("(UserDefined") && parent.toString().startsWith("(UserDefined")){
-            String childName=((UserDefinedType)child).getClassDeclaration().getName().getName();
-            String parentName=((UserDefinedType)parent).getClassDeclaration().getName().getName();
-            try{
-                if(inheritanceGraph.getParentsOfNode(childName).contains(parentName))
-                    return true;
-                else
-                    return false;
-            }catch (GraphDoesNotContainNodeException e){System.out.println("Error:"+((UserDefinedType)child).getClassDeclaration().getName().line+":There is no class with name "+((UserDefinedType)child).getClassDeclaration().getName().getName()+";");}
-        }
         if(child.toString().equals("(UndefinedType)") || parent.toString().equals("(UndefinedType)"))
             return true;
         if(child.toString().equals(parent.toString()))
             return true;
+        if(child.toString().startsWith("(UserDefined") && parent.toString().startsWith("(UserDefined")){
+            String childName=((UserDefinedType)child).getClassDeclaration().getName().getName();
+            String parentName=((UserDefinedType)parent).getClassDeclaration().getName().getName();
+            try{
+                if(inheritanceGraph.getParentsOfNode(childName).contains(parentName)) {
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            }catch (GraphDoesNotContainNodeException e){System.out.println("Error:"+((UserDefinedType)child).getClassDeclaration().getName().line+":There is no class with name "+((UserDefinedType)child).getClassDeclaration().getName().getName()+";");}
+        }
         return false;
     }
 
@@ -775,7 +777,4 @@ public class TypeChecker implements Visitor<Type> {
 
 //Return error statement
 //matne error ha check she dorost bashan
-//Ye error dare ke nemibinimesh
-
-
-
+//Lvalue boodane fieldCall test she
