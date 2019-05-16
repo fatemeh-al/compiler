@@ -602,6 +602,8 @@ public class TypeChecker implements Visitor<Type> {
                 this.numOfErrors++;
             }
         }
+        else if(!instanceType.toString().equals("(UndefinedType)"))
+            System.out.println("Error:Line:" + methodCall.line + ":Unsupported operand types for " + methodCall.toString() + ";");
         return new UndefinedType();
     }
 
@@ -640,6 +642,8 @@ public class TypeChecker implements Visitor<Type> {
             }
             return new IntType();
         }
+        else if(instanceType.toString().equals("(UndefinedType)"))
+            System.out.println("Error:Line:" + fieldCall.line + ":Unsupported operand types for " + fieldCall.toString() + ";");
         return new UndefinedType();
     }
 
@@ -762,9 +766,3 @@ public class TypeChecker implements Visitor<Type> {
 
 //Return error statement
 //fieldCall dorost Lvalue nemishe
-//Self dorost shod
-//hanooz bug haye dige dare daram say mikonam dorostesh konam
-
-
-
-
