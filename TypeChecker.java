@@ -31,8 +31,11 @@ import toorla.types.singleType.*;
 import toorla.utilities.graph.Graph;
 import toorla.utilities.graph.GraphDoesNotContainNodeException;
 
+import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public class TypeChecker implements Visitor<Type> {
 
@@ -47,6 +50,43 @@ public class TypeChecker implements Visitor<Type> {
         this.inheritanceGraph = graph;
     }
 
+    public boolean loopChecker(Graph<String> inheritance_Graph,String child){
+        Set<String> visited=new HashSet<>();
+        int i=0;
+        try {
+            String newChild=child;
+            while(!newChild.equals("Any") && !(visited.contains(newChild))){
+                visited.add(newChild);
+                newChild=inheritanceGraph.getParentsOfNode(newChild).iterator().next();
+            }
+            if(newChild.equals(child))
+                return true;
+            else if(child.equals("Any"))
+                return false;
+            else
+                return false;
+        }catch (GraphDoesNotContainNodeException e){}
+        return false;
+
+    }
+    public boolean parentChecker(Graph<String> inheritance_Graph,String child,String parent,Set<String> visited){
+        try{
+            if(inheritanceGraph.getParentsOfNode(child).contains(parent)) {
+                return true;
+            }
+            else {
+                while(!child.equals("Any") && !visited.contains(child)) {
+                    try {
+                        visited.add(child);
+                        Collection<String> parents=inheritanceGraph.getParentsOfNode(child);
+                        return parentChecker(inheritanceGraph,parents.iterator().next(),parent,visited);
+                    } catch (GraphDoesNotContainNodeException e) {}
+                }
+            }
+        }catch (GraphDoesNotContainNodeException e){}
+        return false;
+    }
+
     public boolean subTypeChecker(Type child, Type parent) {
         if(child.toString().equals("(UndefinedType)") || parent.toString().equals("(UndefinedType)"))
             return true;
@@ -55,33 +95,24 @@ public class TypeChecker implements Visitor<Type> {
         if(child.toString().startsWith("(UserDefined") && parent.toString().startsWith("(UserDefined")){
             String childName=((UserDefinedType)child).getClassDeclaration().getName().getName();
             String parentName=((UserDefinedType)parent).getClassDeclaration().getName().getName();
-            try{
-                if(inheritanceGraph.getParentsOfNode(childName).contains(parentName)) {
-                    return true;
-                }
-                else {
-                    return false;
-                }
-            }catch (GraphDoesNotContainNodeException e){System.out.println("Error:"+((UserDefinedType)child).getClassDeclaration().getName().line+":There is no class with name "+((UserDefinedType)child).getClassDeclaration().getName().getName()+";");}
+            Set<String> empty=new HashSet<>();
+            if(parentChecker(inheritanceGraph,childName,parentName,empty))
+                return true;
+            else
+                return false;
         }
         return false;
     }
 
     @Override
     public Type visit(Program program) {
-
         for(ClassDeclaration cd: program.getClasses()){
-            try {
-                for (String parent : inheritanceGraph.getParentsOfNode(cd.getName().getName()))
-                    if (parent.equals(cd.getName().getName())) {
-                        this.numOfErrors++;
-                        System.out.println("Error:" + cd.getName().line + ":class " + cd.getName().getName() + " has inheritace loop;");
-                    }
+            if (loopChecker(inheritanceGraph,cd.getName().getName())) {
+                this.numOfErrors++;
+                System.out.println("Error:" + cd.getName().line + ":class " + cd.getName().getName() + " has inheritance loop;");
             }
-            catch (GraphDoesNotContainNodeException e){}
             cd.accept(this);
         }
-
         if(this.numOfErrors == 0)
             System.out.println("No error detected;");
         return null;
@@ -183,9 +214,29 @@ public class TypeChecker implements Visitor<Type> {
         try{
             VarSymbolTableItem retItem = (VarSymbolTableItem)SymbolTable.top().get("var_$ret");
             Type methodRetType = retItem.getVarType();
-            //WHAT TO WRITE AS METHoD RETURN TYPE
+            String returnString="";
+            if(methodRetType.toString().equals("(IntType)"))
+                returnString="int";
+            else if(methodRetType.toString().equals("(boolType)"))
+                returnString="boolean";
+            else if(methodRetType.toString().equals("(StringType)"))
+                returnString="string";
+            else if(methodRetType.toString().startsWith("(ArrayType,")) {
+                if(methodRetType.toString().contains("(IntType)"))
+                    returnString="int[]";
+                if(methodRetType.toString().contains("(boolType)"))
+                    returnString="boolean[]";
+                if(methodRetType.toString().contains("(StringType)"))
+                    returnString="string[]";
+                if(methodRetType.toString().contains("UserDefined"))
+                    returnString=methodRetType.toString().substring(24,methodRetType.toString().indexOf(")"))+"[]";
+            }
+            else if(methodRetType.toString().startsWith("(UserDefined,"))
+                returnString=methodRetType.toString().substring(13,methodRetType.toString().indexOf(")"));
+            else
+                returnString="";
             if(!subTypeChecker(retType, methodRetType)) {
-                System.out.println("Error:Line:" + returnStat.line + ":Expression returned by this method must be" + methodRetType.toString() +";");
+                System.out.println("Error:Line:" + returnStat.line + ":Expression returned by this method must be" + returnString +";");
                 this.numOfErrors++;
             }
         }catch(ItemNotFoundException e) {
@@ -538,7 +589,7 @@ public class TypeChecker implements Visitor<Type> {
             identifierType.setLvalue();
             return identifierType;
         }catch(ItemNotFoundException e){
-            System.out.println("Error:Line:" + identifier.line + ":Variable " + identifier.getName() + " is not declared yet is this Scope");
+            System.out.println("Error:Line:" + identifier.line + ":Variable " + identifier.getName() + " is not declared yet is this Scope;");
             this.numOfErrors++;
             Type undefinedIdentifier = new UndefinedType();
             undefinedIdentifier.setLvalue();
@@ -774,6 +825,9 @@ public class TypeChecker implements Visitor<Type> {
     }
 }
 
-//Return error statement
 //matne error ha check she dorost bashan
-//Lvalue boodane fieldCall test she
+//File SymbolTable jadid ro bezar
+//tooye NameAnalyzer khate 29 ro comment kon ke derakht ro print nakone
+
+
+
