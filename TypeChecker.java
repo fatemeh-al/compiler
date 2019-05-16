@@ -183,7 +183,7 @@ public class TypeChecker implements Visitor<Type> {
             Type methodRetType = retItem.getVarType();
             //WHAT TO WRITE AS METHoD RETURN TYPE
             if(!subTypeChecker(retType, methodRetType)) {
-                System.out.println("Error:Line:" + returnStat.line + ":Expression returned by this method must be;");
+                System.out.println("Error:Line:" + returnStat.line + ":Expression returned by this method must be" + methodRetType.toString() +";");
                 this.numOfErrors++;
             }
         }catch(ItemNotFoundException e) {
@@ -532,11 +532,15 @@ public class TypeChecker implements Visitor<Type> {
         String name = identifier.getName();
         try {
             VarSymbolTableItem item = (VarSymbolTableItem)(SymbolTable.top().get("var_" + name));
-            return item.getVarType();
+            Type identifierType = item.getVarType();
+            identifierType.setLvalue();
+            return identifierType;
         }catch(ItemNotFoundException e){
             System.out.println("Error:Line:" + identifier.line + ":Variable " + identifier.getName() + " is not declared yet is this Scope");
             this.numOfErrors++;
-            return new UndefinedType();
+            Type undefinedIdentifier = new UndefinedType();
+            undefinedIdentifier.setLvalue();
+            return undefinedIdentifier;
         }
     }
 
@@ -621,7 +625,8 @@ public class TypeChecker implements Visitor<Type> {
                 try{
                     FieldSymbolTableItem fieldItem  = (FieldSymbolTableItem)classSymbolTable.get("var_" + fieldName);
                     AccessModifier access = fieldItem.getAccessModifier();
-                    if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !fieldCall.toString().equals("(Self)")){
+                    if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !fieldCall.getInstance().toString().equals("(Self)")){
+                        System.out.println(instanceType.toString());
                         System.out.println("Error:Line:" + fieldCall.line + ":Illegal access to Field " + fieldName + " of an object of Class " + className + ";");
                         this.numOfErrors++;
                         return returnUndefined;
@@ -770,3 +775,7 @@ public class TypeChecker implements Visitor<Type> {
 
 //Return error statement
 //matne error ha check she dorost bashan
+//Ye error dare ke nemibinimesh
+
+
+
