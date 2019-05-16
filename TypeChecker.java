@@ -39,6 +39,7 @@ public class TypeChecker implements Visitor<Type> {
     private boolean inLoop;
     private int numOfErrors;
     private Graph<String> inheritanceGraph;
+    private String currentClass;
 
     public TypeChecker(Graph<String> graph){
         this.inLoop = false;
@@ -541,7 +542,7 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(Self self) {
-        return null;
+        return new UserDefinedType(new ClassDeclaration(new Identifier(this.currentClass)));
     }
 
     @Override
@@ -597,7 +598,7 @@ public class TypeChecker implements Visitor<Type> {
                     this.numOfErrors++;
                 }
             }catch(ItemNotFoundException e1){
-                System.out.println("Error:Line:" + methodCall.line + ":Class " + className + " does not exist;");
+                System.out.println("Error:Line:" + methodCall.line + ":There is no class with name " + className + ";");
                 this.numOfErrors++;
             }
         }
@@ -617,7 +618,7 @@ public class TypeChecker implements Visitor<Type> {
                     FieldSymbolTableItem fieldItem  = (FieldSymbolTableItem)classSymbolTable.get("var_" + fieldName);
                     AccessModifier access = fieldItem.getAccessModifier();
                     if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !fieldCall.toString().equals("(Self)")){
-                        System.out.println("Error:Line:" + fieldCall.line + ":Illegal access to Method " + fieldName + " of an object of Class " + className + ";");
+                        System.out.println("Error:Line:" + fieldCall.line + ":Illegal access to Field " + fieldName + " of an object of Class " + className + ";");
                         this.numOfErrors++;
                         return new UndefinedType();
                     }
@@ -627,7 +628,7 @@ public class TypeChecker implements Visitor<Type> {
                     this.numOfErrors++;
                 }
             }catch(ItemNotFoundException e1){
-                System.out.println("Error:Line:" + fieldCall.line + ":Class " + className + " does not exist;");
+                System.out.println("Error:Line:" + fieldCall.line + ":There is no class with name " + className + ";");
                 this.numOfErrors++;
             }
         }
@@ -645,6 +646,7 @@ public class TypeChecker implements Visitor<Type> {
     @Override
     public Type visit(MethodDeclaration methodDeclaration) {
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
+        //Set return type
         VarSymbolTableItem returnItem = new VarSymbolTableItem();
         Type returnType = methodDeclaration.getReturnType();
         if(returnType.toString().startsWith("(UserDefined")) {
@@ -652,7 +654,7 @@ public class TypeChecker implements Visitor<Type> {
             try{
                 SymbolTableItem retClassItem = SymbolTable.root.get("class_" + retClassName);
             }catch(ItemNotFoundException e1){
-                System.out.println("Error:Line:" + methodDeclaration.getName().line + ":Class " + retClassName + " does not exist;");
+                System.out.println("Error:Line:" + methodDeclaration.getName().line + ":There is no class with name " + retClassName + ";");
                 this.numOfErrors++;
                 returnType = new UndefinedType();
             }
@@ -663,6 +665,7 @@ public class TypeChecker implements Visitor<Type> {
             SymbolTable.top().put(returnItem);
         }catch(ItemAlreadyExistsException e2){
         }
+        //Add parameters to Symbol Table
         for(ParameterDeclaration arg: methodDeclaration.getArgs()){
             VarSymbolTableItem argItem = new VarSymbolTableItem();
             argItem.setVarType(arg.getType());
@@ -671,7 +674,7 @@ public class TypeChecker implements Visitor<Type> {
                 try{
                     SymbolTableItem argClassItem = SymbolTable.root.get("class_" + argCLassName);
                 }catch(ItemNotFoundException e4){
-                    System.out.println("Error:Line:" + methodDeclaration.getName().line + ":Class " + argCLassName + " does not exist;");
+                    System.out.println("Error:Line:" + methodDeclaration.getName().line + ":There is no class with name " + argCLassName + ";");
                     this.numOfErrors++;
                     argItem.setVarType(new UndefinedType());
                 }
@@ -708,6 +711,7 @@ public class TypeChecker implements Visitor<Type> {
                 }
             }
             SymbolTable.push(classSym);
+            this.currentClass = classDeclaration.getName().getName();
             for(ClassMemberDeclaration member: classDeclaration.getClassMembers())
                 member.accept(this);
         }catch(ItemNotFoundException e2){
@@ -747,6 +751,7 @@ public class TypeChecker implements Visitor<Type> {
                 this.numOfErrors++;
                 System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":No method main declared in entry class;");
             }
+            this.currentClass = entryClassDeclaration.getName().getName();
             for(ClassMemberDeclaration member: entryClassDeclaration.getClassMembers())
                 member.accept(this);
         }catch(ItemNotFoundException e2){
@@ -757,4 +762,9 @@ public class TypeChecker implements Visitor<Type> {
 
 //Return error statement
 //fieldCall dorost Lvalue nemishe
-//Self ghalate
+//Self dorost shod
+//hanooz bug haye dige dare daram say mikonam dorostesh konam
+
+
+
+
