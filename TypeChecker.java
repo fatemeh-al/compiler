@@ -628,7 +628,6 @@ public class TypeChecker implements Visitor<Type> {
                     FieldSymbolTableItem fieldItem  = (FieldSymbolTableItem)classSymbolTable.get("var_" + fieldName);
                     AccessModifier access = fieldItem.getAccessModifier();
                     if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !fieldCall.getInstance().toString().equals("(Self)")){
-                        System.out.println(instanceType.toString());
                         System.out.println("Error:Line:" + fieldCall.line + ":Illegal access to Field " + fieldName + " of an object of Class " + className + ";");
                         this.numOfErrors++;
                         return returnUndefined;
@@ -653,7 +652,7 @@ public class TypeChecker implements Visitor<Type> {
             }
             return new IntType();
         }
-        else if(instanceType.toString().equals("(UndefinedType)"))
+        else if(!instanceType.toString().equals("(UndefinedType)"))
             System.out.println("Error:Line:" + fieldCall.line + ":Unsupported operand types for " + fieldCall.toString() + ";");
         return returnUndefined;
     }
