@@ -56,7 +56,7 @@ public class TypeChecker implements Visitor<Type> {
                     return true;
                 else
                     return false;
-            }catch (GraphDoesNotContainNodeException e){System.out.println("Error:"+((UserDefinedType)child).getClassDeclaration().getName().line+":Class "+((UserDefinedType)child).getClassDeclaration().getName().getName()+"doesn't exist;");}
+            }catch (GraphDoesNotContainNodeException e){System.out.println("Error:"+((UserDefinedType)child).getClassDeclaration().getName().line+":There is no class with name "+((UserDefinedType)child).getClassDeclaration().getName().getName()+";");}
         }
         if(child.toString().equals("(UndefinedType)") || parent.toString().equals("(UndefinedType)"))
             return true;
@@ -553,7 +553,7 @@ public class TypeChecker implements Visitor<Type> {
             Type classType = new UserDefinedType(new ClassDeclaration(newClassInstance.getClassName()));
             return classType;
         }catch(ItemNotFoundException e){
-            System.out.println("Error:Line:" + newClassInstance.line + ":Class " + className + " does not exist;");
+            System.out.println("Error:Line:" + newClassInstance.line + ":There is no class with name " + className + ";");
             this.numOfErrors++;
             return new UndefinedType();
         }
@@ -611,6 +611,8 @@ public class TypeChecker implements Visitor<Type> {
     public Type visit(FieldCall fieldCall) {
         Type instanceType = fieldCall.getInstance().accept(this);
         String fieldName = fieldCall.getField().getName();
+        Type returnUndefined = new UndefinedType();
+        returnUndefined.setLvalue();
         if(instanceType.toString().startsWith("(UserDefined")){
             String className = ((UserDefinedType)instanceType).getClassDeclaration().getName().getName();
             try{
@@ -622,9 +624,11 @@ public class TypeChecker implements Visitor<Type> {
                     if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !fieldCall.toString().equals("(Self)")){
                         System.out.println("Error:Line:" + fieldCall.line + ":Illegal access to Field " + fieldName + " of an object of Class " + className + ";");
                         this.numOfErrors++;
-                        return new UndefinedType();
+                        return returnUndefined;
                     }
-                    return fieldItem.getVarType();
+                    Type fieldType = fieldItem.getVarType();
+                    fieldType.setLvalue();
+                    return fieldType;
                 }catch(ItemNotFoundException e2){
                     System.out.println("Error:Line:" + fieldCall.line + ":There is no Field with name " + fieldName + " with in class " + className + ";");
                     this.numOfErrors++;
@@ -644,7 +648,7 @@ public class TypeChecker implements Visitor<Type> {
         }
         else if(instanceType.toString().equals("(UndefinedType)"))
             System.out.println("Error:Line:" + fieldCall.line + ":Unsupported operand types for " + fieldCall.toString() + ";");
-        return new UndefinedType();
+        return returnUndefined;
     }
 
     @Override
@@ -706,7 +710,7 @@ public class TypeChecker implements Visitor<Type> {
                     SymbolTableItem parentItem = SymbolTable.root.get("class_" + parentName);
                 } catch (ItemNotFoundException e1) {
                     this.numOfErrors++;
-                    System.out.println("Error:Line:" + classDeclaration.getName().line + ":Parent class " + parentName + " does not exist;");
+                    System.out.println("Error:Line:" + classDeclaration.getName().line + ":There is no class with name " + parentName + ";");
                     try{
                         ClassSymbolTableItem anyItem = (ClassSymbolTableItem) SymbolTable.root.get("class_Any");
                         classSym.setPreSymbolTable(anyItem.getSymbolTable());
@@ -734,7 +738,7 @@ public class TypeChecker implements Visitor<Type> {
                     SymbolTableItem parentItem = SymbolTable.root.get("class_" + parentName);
                 } catch (ItemNotFoundException e1) {
                     this.numOfErrors++;
-                    System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":Parent class " + parentName + " does not exist;");
+                    System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":There is no class with name " + parentName + ";");
                     try{
                         ClassSymbolTableItem anyItem = (ClassSymbolTableItem) SymbolTable.root.get("class_Any");
                         classSym.setPreSymbolTable(anyItem.getSymbolTable());
@@ -765,4 +769,4 @@ public class TypeChecker implements Visitor<Type> {
 }
 
 //Return error statement
-//fieldCall dorost Lvalue nemishe
+//matne error ha check she dorost bashan
