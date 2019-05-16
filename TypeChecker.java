@@ -196,7 +196,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = plusExpr.getLhs().accept(this);
         Type rhs = plusExpr.getRhs().accept(this);
         if(lhs.toString().equals("(IntType)") && rhs.toString().equals("(IntType)"))
-            return lhs;
+            return new IntType();
         else if((lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(IntType)"))
                 || (lhs.toString().equals("(IntType)") && rhs.toString().equals("(UndefinedType)"))
                 || (lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(UndefinedType)")))
@@ -213,7 +213,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = minusExpr.getLhs().accept(this);
         Type rhs = minusExpr.getRhs().accept(this);
         if(lhs.toString().equals("(IntType)") && rhs.toString().equals("(IntType)"))
-            return lhs;
+            return new IntType();
         else if((lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(IntType)"))
                 || (lhs.toString().equals("(IntType)") && rhs.toString().equals("(UndefinedType)"))
                 || (lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(UndefinedType)")))
@@ -230,7 +230,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = timesExpr.getLhs().accept(this);
         Type rhs = timesExpr.getRhs().accept(this);
         if(lhs.toString().equals("(IntType)") && rhs.toString().equals("(IntType)"))
-            return lhs;
+            return new IntType();
         else if((lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(IntType)"))
                 || (lhs.toString().equals("(IntType)") && rhs.toString().equals("(UndefinedType)"))
                 || (lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(UndefinedType)")))
@@ -247,7 +247,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = divisionExpr.getLhs().accept(this);
         Type rhs = divisionExpr.getRhs().accept(this);
         if(lhs.toString().equals("(IntType)") && rhs.toString().equals("(IntType)"))
-            return lhs;
+            return new IntType();
         else if((lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(IntType)"))
                 || (lhs.toString().equals("(IntType)") && rhs.toString().equals("(UndefinedType)"))
                 || (lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(UndefinedType)")))
@@ -264,7 +264,7 @@ public class TypeChecker implements Visitor<Type> {
         Type lhs = moduloExpr.getLhs().accept(this);
         Type rhs = moduloExpr.getRhs().accept(this);
         if(lhs.toString().equals("(IntType)") && rhs.toString().equals("(IntType)"))
-            return lhs;
+            return new IntType();
         else if((lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(IntType)"))
                 || (lhs.toString().equals("(IntType)") && rhs.toString().equals("(UndefinedType)"))
                 || (lhs.toString().equals("(UndefinedType)") && rhs.toString().equals("(UndefinedType)")))
@@ -314,7 +314,7 @@ public class TypeChecker implements Visitor<Type> {
     public Type visit(Neg negExpr) {
         Type expr = negExpr.getExpr().accept(this);
         if(expr.toString().equals("(IntType)"))
-            return expr;
+            return new IntType();
         else if(expr.toString().equals("(UndefinedType)"))
             return expr;
         else {
@@ -362,7 +362,7 @@ public class TypeChecker implements Visitor<Type> {
     public Type visit(Not notExpr) {
         Type expr = notExpr.getExpr().accept(this);
         if(expr.toString().equals("(BoolType)"))
-            return expr;
+            return new BoolType();
         else if(expr.toString().equals("(UndefinedType)"))
             return expr;
         else {
