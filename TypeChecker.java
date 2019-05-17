@@ -710,6 +710,12 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(MethodDeclaration methodDeclaration) {
+        if(methodDeclaration.getName().getName().equals("main") && (!methodDeclaration.getReturnType().toString().equals("(IntType)")
+                || methodDeclaration.getArgs().size() != 0
+                || !methodDeclaration.getAccessModifier().toString().equals("(ACCESS_MODIFIER_PUBLIC)"))) {
+            System.out.println("Error:Line:" + methodDeclaration.getName().line + ":Main method definition is not valid;");
+            this.numOfErrors++;
+        }
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
         //Set return type
         VarSymbolTableItem returnItem = new VarSymbolTableItem();
@@ -806,12 +812,6 @@ public class TypeChecker implements Visitor<Type> {
             SymbolTable.push(classSym);
             try{
                 MethodSymbolTableItem mainItem = (MethodSymbolTableItem)(SymbolTable.top().get("method_main"));
-                if(!mainItem.getReturnType().toString().equals("(IntType)")
-                        || mainItem.getArgumentsTypes().size() != 0
-                        || !mainItem.getAccessModifier().toString().equals("(ACCESS_MODIFIER_PUBLIC)")) {
-                    System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":Main method definition is not valid;");
-                    this.numOfErrors++;
-                }
             }catch(ItemNotFoundException e3){
                 this.numOfErrors++;
                 System.out.println("Error:Line:" + entryClassDeclaration.getName().line + ":No method main declared in entry class;");
@@ -824,3 +824,6 @@ public class TypeChecker implements Visitor<Type> {
         return null;
     }
 }
+
+
+
