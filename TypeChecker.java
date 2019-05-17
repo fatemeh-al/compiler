@@ -223,13 +223,13 @@ public class TypeChecker implements Visitor<Type> {
                 returnString="string";
             else if(methodRetType.toString().startsWith("(ArrayType,")) {
                 if(methodRetType.toString().contains("(IntType)"))
-                    returnString="int[]";
+                    returnString="array of int";
                 if(methodRetType.toString().contains("(boolType)"))
-                    returnString="boolean[]";
+                    returnString="array of boolean";
                 if(methodRetType.toString().contains("(StringType)"))
-                    returnString="string[]";
+                    returnString="array of string";
                 if(methodRetType.toString().contains("UserDefined"))
-                    returnString=methodRetType.toString().substring(24,methodRetType.toString().indexOf(")"))+"[]";
+                    returnString="array of " + methodRetType.toString().substring(24,methodRetType.toString().indexOf(")"));
             }
             else if(methodRetType.toString().startsWith("(UserDefined,"))
                 returnString=methodRetType.toString().substring(13,methodRetType.toString().indexOf(")"));
@@ -824,10 +824,3 @@ public class TypeChecker implements Visitor<Type> {
         return null;
     }
 }
-
-//matne error ha check she dorost bashan
-//File SymbolTable jadid ro bezar
-//tooye NameAnalyzer khate 29 ro comment kon ke derakht ro print nakone
-
-
-
