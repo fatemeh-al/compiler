@@ -19,6 +19,7 @@ import toorla.ast.statement.localVarStats.LocalVarDef;
 import toorla.ast.statement.localVarStats.LocalVarsDefinitions;
 import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
+import toorla.types.Type;
 
 import java.io.FileWriter;
 
@@ -29,28 +30,46 @@ public class CodeGenerator extends Visitor<Void>{
     public Void writeInCurrentFile(String code){
         try{
             this.writer.write(code);
-            //CHECK IF IT GOES TO A NEW LINE OR NOT
+            //CHECK IF IT WRITES A NEW LINE OR NOT
         }catch(Exception e){}
         return null;
     }
 
     public Void visit(Plus plusExpr) {
+        plusExpr.getLhs().accept(this);
+        plusExpr.getRhs().accept(this);
+        this.writeInCurrentFile("iadd");
         return null;
     }
 
     public Void visit(Minus minusExpr) {
+        //Which one should be first?
+        minusExpr.getLhs().accept(this);
+        minusExpr.getRhs().accept(this);
+        this.writeInCurrentFile("isub");
         return null;
     }
 
     public Void visit(Times timesExpr) {
+        timesExpr.getLhs().accept(this);
+        timesExpr.getRhs().accept(this);
+        this.writeInCurrentFile("imul");
         return null;
     }
 
     public Void visit(Division divExpr) {
+        //Which one should be first???
+        divExpr.getLhs().accept(this);
+        divExpr.getRhs().accept(this);
+        this.writeInCurrentFile("idiv");
         return null;
     }
 
     public Void visit(Modulo moduloExpr) {
+        //Which one should be first???
+        moduloExpr.getLhs().accept(this);
+        moduloExpr.getRhs().accept(this);
+        this.writeInCurrentFile("irem");
         return null;
     }
 
@@ -177,24 +196,45 @@ public class CodeGenerator extends Visitor<Void>{
 
     // declarations
     public Void visit(ParameterDeclaration parameterDeclaration) {
+        //Anything to do here???
         return null;
     }
 
     public Void visit(LocalVarsDefinitions localVarsDefinitions) {
+        for(LocalVarDef varDef: localVarsDefinitions.getVarDefinitions())
+            varDef.accept(this);
         return null;
     }
 
     public Void visit(FieldDeclaration fieldDeclaration) {
+        String descriptor = ".field ";
+        if(fieldDeclaration.getAccessModifier().toString().equals("(ACCESS_MODIFIER_PUBLIC)"))
+            descriptor += "public ";
+        else
+            descriptor += "private ";
+        descriptor += (fieldDeclaration.getIdentifier().getName() + " " + fieldDeclaration.getType().getSymbol());
+        this.writeInCurrentFile(descriptor);
         return null;
     }
 
     public Void visit(MethodDeclaration methodDeclaration) {
-        //push SymbolTable
-        //.method
-        //.limit stack
-        //.limit locals
-        //statements
-        //.end method
+        String descriptor = ".method ";
+        if(methodDeclaration.getAccessModifier().toString().equals("(ACCESS_MODIFIER_PUBLIC)"))
+            descriptor += "public ";
+        else
+            descriptor += "private ";
+        descriptor += (methodDeclaration.getName().getName() + "(");
+        for(ParameterDeclaration arg: methodDeclaration.getArgs())
+            descriptor += arg.getType().getSymbol();
+        descriptor += (methodDeclaration.getReturnType().getSymbol() + ")");
+        this.writeInCurrentFile(descriptor);
+        this.writeInCurrentFile(".limit stack 1000");
+        this.writeInCurrentFile(".limit locals 100");
+        SymbolTable.pushFromQueue();
+        for(Statement stat: methodDeclaration.getBody())
+            stat.accept(this);
+        this.writeInCurrentFile(".end method");
+        SymbolTable.pop();
         return null;
     }
 
