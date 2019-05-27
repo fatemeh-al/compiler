@@ -3,6 +3,7 @@ package toorla.visitor;
 import toorla.ast.Program;
 import toorla.ast.declaration.classDecs.ClassDeclaration;
 import toorla.ast.declaration.classDecs.EntryClassDeclaration;
+import toorla.ast.declaration.classDecs.classMembersDecs.ClassMemberDeclaration;
 import toorla.ast.declaration.classDecs.classMembersDecs.FieldDeclaration;
 import toorla.ast.declaration.classDecs.classMembersDecs.MethodDeclaration;
 import toorla.ast.declaration.localVarDecs.ParameterDeclaration;
@@ -17,6 +18,7 @@ import toorla.ast.statement.*;
 import toorla.ast.statement.localVarStats.LocalVarDef;
 import toorla.ast.statement.localVarStats.LocalVarsDefinitions;
 import toorla.ast.statement.returnStatement.Return;
+import toorla.symbolTable.SymbolTable;
 
 import java.io.FileWriter;
 
@@ -197,26 +199,36 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(ClassDeclaration classDeclaration) {
+        //Age bayad esme classa ba fileshoon yeki bashe, pas "class_" ro koja ezafe konam ke ruuner handle she?
         try{
             this.writer = new FileWriter("artifact/" + classDeclaration.getName().getName() + ".j");
-            //.class
-            //.super
-            //push SymbolTable
-            //fields and methods
-            //pop SymbolTable
+            this.writeInCurrentFile(".class public " + "class_" + classDeclaration.getName().getName());
+            if(classDeclaration.getParentName().getName().equals("Any"))
+                this.writeInCurrentFile(".super java/lang/Object");
+            else
+                this.writeInCurrentFile(".super class_" +classDeclaration.getParentName().getName());
+            SymbolTable.pushFromQueue();
+            for(ClassMemberDeclaration cmd: classDeclaration.getClassMembers())
+                cmd.accept(this);
+            SymbolTable.pop();
             this.writer.close();
         }catch(Exception e){}
         return null;
     }
 
     public Void visit(EntryClassDeclaration entryClassDeclaration) {
+        //Age bayad esme classa ba fileshoon yeki bashe, pas "class_" ro koja ezafe konam ke ruuner handle she?
         try{
             this.writer = new FileWriter("artifact/" + entryClassDeclaration.getName().getName() + ".j");
-            //.class
-            //.super
-            //push SymbolTable
-            //fields and methods
-            //pop SymbolTable
+            this.writeInCurrentFile(".class public class_" + entryClassDeclaration.getName().getName());
+            if(entryClassDeclaration.getParentName().getName().equals("Any"))
+                this.writeInCurrentFile(".super java/lang/Object");
+            else
+                this.writeInCurrentFile(".super class_" + entryClassDeclaration.getParentName().getName());
+            SymbolTable.pushFromQueue();
+            for(ClassMemberDeclaration cmd: entryClassDeclaration.getClassMembers())
+                cmd.accept(this);
+            SymbolTable.pop();
             this.writer.close();
         }catch(Exception e){}
         return null;
@@ -224,8 +236,10 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(Program program) {
         //create Runner class
-        //Check if you should push Any symbolTable from queue or not
-        //visit classes
+        SymbolTable.pushFromQueue();
+        for( ClassDeclaration classDeclaration : program.getClasses() )
+            classDeclaration.accept(this);
+        SymbolTable.pop();
         return null;
     }
 }
