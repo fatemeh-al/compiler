@@ -27,6 +27,11 @@ import java.io.FileWriter;
 public class CodeGenerator extends Visitor<Void>{
 
     private FileWriter writer;
+    private int labelNum;
+
+    public CodeGenerator(){
+        this.labelNum = 0;
+    }
 
     public Void writeInCurrentFile(String code){
         try{
@@ -74,6 +79,41 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
+    public Void visit(Neg negExpr) {
+        negExpr.accept(this);
+        this.writeInCurrentFile("ineg");
+        return null;
+    }
+
+    public Void visit(And andExpr) {
+        //p?q:false
+        andExpr.getLhs().accept(this);
+        this.labelNum++;
+        String previousLabel = "Label" + this.labelNum;
+        this.writeInCurrentFile("ifeq " + previousLabel);
+        andExpr.getRhs().accept(this);
+        this.labelNum++;
+        this.writeInCurrentFile("goto Label" + this.labelNum);
+        this.writeInCurrentFile(previousLabel + ": ldc 0");
+        this.writeInCurrentFile("Label" + this.labelNum + ":");
+        return null;
+    }
+
+    public Void visit(Or orExpr) {
+        //p?true:q
+        orExpr.getLhs().accept(this);
+        this.labelNum++;
+        String previousLabel = "Label" + this.labelNum;
+        this.writeInCurrentFile("ifeq " + previousLabel);
+        this.writeInCurrentFile("ldc 1");
+        this.labelNum++;
+        this.writeInCurrentFile("goto Label" + this.labelNum);
+        this.writeInCurrentFile(previousLabel + ":");
+        orExpr.getRhs().accept(this);
+        this.writeInCurrentFile("Label" + this.labelNum + ":");
+        return null;
+    }
+
     public Void visit(Equals equalsExpr) {
         return null;
     }
@@ -83,18 +123,6 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(LessThan lessThanExpr) {
-        return null;
-    }
-
-    public Void visit(And andExpr) {
-        return null;
-    }
-
-    public Void visit(Or orExpr) {
-        return null;
-    }
-
-    public Void visit(Neg negExpr) {
         return null;
     }
 
