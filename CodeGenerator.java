@@ -20,6 +20,7 @@ import toorla.ast.statement.localVarStats.LocalVarDef;
 import toorla.ast.statement.localVarStats.LocalVarsDefinitions;
 import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
+import toorla.symbolTable.symbolTableItem.varItems.VarSymbolTableItem;
 import toorla.types.Type;
 
 import java.io.FileWriter;
@@ -114,6 +115,29 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
+    public Void visit(IntValue intValue) {
+        this.writeInCurrentFile("ldc " + intValue.getConstant());
+        return null;
+    }
+
+    public Void visit(BoolValue booleanValue) {
+        if(booleanValue.isConstant())
+            this.writeInCurrentFile("ldc 1");//iconst_1
+        else
+            this.writeInCurrentFile("ldc 0");//iconst_0
+        return null;
+    }
+
+    public Void visit(StringValue stringValue) {
+        this.writeInCurrentFile("ldc " + stringValue.getConstant());
+        return null;
+    }
+
+    public Void visit(Self self) {
+        this.writeInCurrentFile("aload_0");
+        return null;
+    }
+
     public Void visit(Equals equalsExpr) {
         return null;
     }
@@ -138,23 +162,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Self self) {
-        return null;
-    }
-
-    public Void visit(IntValue intValue) {
-        return null;
-    }
-
     public Void visit(NewArray newArray) {
-        return null;
-    }
-
-    public Void visit(BoolValue booleanValue) {
-        return null;
-    }
-
-    public Void visit(StringValue stringValue) {
         return null;
     }
 
