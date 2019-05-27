@@ -1,5 +1,6 @@
 package toorla.visitor;
 
+import sun.awt.Symbol;
 import toorla.ast.Program;
 import toorla.ast.declaration.classDecs.ClassDeclaration;
 import toorla.ast.declaration.classDecs.EntryClassDeclaration;
@@ -154,10 +155,6 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Block block) {
-        return null;
-    }
-
     public Void visit(Conditional conditional) {
         return null;
     }
@@ -178,10 +175,6 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Skip skip) {
-        return null;
-    }
-
     public Void visit(LocalVarDef localVarDef) {
         return null;
     }
@@ -191,6 +184,18 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(DecStatement decStatement) {
+        return null;
+    }
+
+    public Void visit(Skip skip) {
+        return null;
+    }
+
+    public Void visit(Block block) {
+        SymbolTable.pushFromQueue();
+        for(Statement stat: block.body)
+            stat.accept(this);
+        SymbolTable.pop();
         return null;
     }
 
@@ -239,6 +244,7 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(ClassDeclaration classDeclaration) {
+        //Method <init> bayad ezafe konam???
         //Age bayad esme classa ba fileshoon yeki bashe, pas "class_" ro koja ezafe konam ke ruuner handle she?
         try{
             this.writer = new FileWriter("artifact/" + classDeclaration.getName().getName() + ".j");
@@ -257,6 +263,7 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(EntryClassDeclaration entryClassDeclaration) {
+        //Method <init> bayad ezafe konam???
         //Age bayad esme classa ba fileshoon yeki bashe, pas "class_" ro koja ezafe konam ke ruuner handle she?
         try{
             this.writer = new FileWriter("artifact/" + entryClassDeclaration.getName().getName() + ".j");
