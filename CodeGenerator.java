@@ -20,7 +20,14 @@ import toorla.ast.statement.localVarStats.LocalVarsDefinitions;
 import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
 import toorla.symbolTable.symbolTableItem.varItems.VarSymbolTableItem;
+import toorla.typeChecker.ExpressionTypeExtractor;
 import toorla.types.Type;
+import toorla.types.Undefined;
+import toorla.types.arrayType.ArrayType;
+import toorla.types.singleType.BoolType;
+import toorla.types.singleType.IntType;
+import toorla.types.singleType.StringType;
+import toorla.types.singleType.UserDefinedType;
 import toorla.utilities.stack.Stack;
 
 import java.io.FileWriter;
@@ -28,6 +35,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 public class CodeGenerator extends Visitor<Void>{
+    private ExpressionTypeExtractor expressionTypeExtractor;
     private static Stack<String> breaks = new Stack<>();
     private static Stack<String> continues = new Stack<>();
     private FileWriter writer;
@@ -143,11 +151,28 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(Equals equalsExpr) {
         equalsExpr.getLhs().accept(this);
-        System.out.println(equalsExpr.getLhs().toString());
-
-
-
-        return null;
+        equalsExpr.getRhs().accept(this);
+        Type Lhs_t=equalsExpr.getLhs().accept(expressionTypeExtractor);
+        if(Lhs_t instanceof StringType){
+            this.writeInCurrentFile("invokevirtual  java/lang/String.equals:(Ljava/lang/Object;)Z");
+        }
+        if((Lhs_t instanceof IntType) || (Lhs_t instanceof BoolType)){
+            labelNum++;
+            int first=labelNum;
+            this.writeInCurrentFile("if_icmpeq "+"Label"+first);
+            this.writeInCurrentFile("ldc 0");
+            labelNum++;
+            int second=labelNum;
+            this.writeInCurrentFile("goto "+"Label"+second);
+            this.writeInCurrentFile("Label"+first+":");
+            this.writeInCurrentFile("ldc 1");
+            this.writeInCurrentFile("Label"+second+":");
+        }
+       if(Lhs_t instanceof ArrayType){
+           //JAVA/UTILL/ARRAY?!->nemidoonam chejoori estefade mishe:(
+       }
+        //moghayaseye 2 ta userdefinded type?shayad aslan method equal tarif nashode bashe barash
+       return null;
     }
 
     public Void visit(GreaterThan gtExpr) {
@@ -217,12 +242,34 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(NotEquals notEquals) {
+        notEquals.getLhs().accept(this);
+        notEquals.getRhs().accept(this);
+        Type Lhs_t=notEquals.getLhs().accept(expressionTypeExtractor);
+        if(Lhs_t instanceof StringType){
+            this.writeInCurrentFile("invokevirtual  java/lang/String.equals:(Ljava/lang/Object;)Z");
+        }
+        if((Lhs_t instanceof IntType) || (Lhs_t instanceof BoolType)){
+            labelNum++;
+            int first=labelNum;
+            this.writeInCurrentFile("if_icmpneq "+"Label"+first);
+            this.writeInCurrentFile("ldc 0");
+            labelNum++;
+            int second=labelNum;
+            this.writeInCurrentFile("goto "+"Label"+second);
+            this.writeInCurrentFile("Label"+first+":");
+            this.writeInCurrentFile("ldc 1");
+            this.writeInCurrentFile("Label"+second+":");
+        }
+        if(Lhs_t instanceof ArrayType){
+            //JAVA/UTILL/ARRAY?!->nemidoonam chejoori estefade mishe:(
+        }
+        //moghayaseye 2 ta userdefind type?shayad aslan method equal tarif nashode bashe barash?!
         return null;
     }
 
     // Statement
     public Void visit(PrintLine printStat) {
-
+        Type printType=printStat.getArg().accept(expressionTypeExtractor);
         return null;
     }
 
