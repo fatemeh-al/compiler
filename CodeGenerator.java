@@ -278,11 +278,14 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Conditional conditional) {
+        SymbolTable.pushFromQueue();
         conditional.getCondition().accept(this);
         labelNum++;
         int first=labelNum;
         this.writeInCurrentFile("ifeq "+"Label"+first);
         conditional.getThenStatement().accept(this);
+        SymbolTable.pop();
+        SymbolTable.pushFromQueue();
         labelNum++;
         int second=labelNum;
         this.writeInCurrentFile("goto "+"Label"+second);
@@ -291,10 +294,12 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile("ifeq "+second);
         conditional.getElseStatement().accept(this);
         this.writeInCurrentFile("Label"+second+":");
+        SymbolTable.pop();
         return null;
     }
 
     public Void visit(While whileStat) {
+        SymbolTable.pushFromQueue();
         labelNum++;
         int first=labelNum;
         writeInCurrentFile("Label"+first+":");
@@ -307,6 +312,7 @@ public class CodeGenerator extends Visitor<Void>{
         whileStat.expr.accept(this);
         this.writeInCurrentFile("goto "+"Label"+first);
         this.writeInCurrentFile("Label"+second+":");
+        SymbolTable.pop();
         return null;
     }
 
