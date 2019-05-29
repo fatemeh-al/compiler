@@ -270,6 +270,20 @@ public class CodeGenerator extends Visitor<Void>{
     // Statement
     public Void visit(PrintLine printStat) {
         Type printType=printStat.getArg().accept(expressionTypeExtractor);
+        printStat.getArg().accept(this);
+        if(printType instanceof StringType){
+            this.writeInCurrentFile("invokevirtual  java/io/PrintStream.println:(Ljava/lang/String;)V")
+        }
+        if(printType instanceof IntType){
+            this.writeInCurrentFile( "invokevirtual java/io/PrintStream.println:(I)V)");
+        }
+        if(printType instanceof  BoolType){
+            this.writeInCurrentFile("invokevirtual java/io/PrintStream.println:(Z)V");
+        }
+        if(printType instanceof ArrayType){
+             //java\util\arrays?
+        }
+        //userdefined?
         return null;
     }
 
