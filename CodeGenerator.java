@@ -1,6 +1,5 @@
 package toorla.visitor;
 
-import sun.awt.Symbol;
 import toorla.ast.Program;
 import toorla.ast.declaration.classDecs.ClassDeclaration;
 import toorla.ast.declaration.classDecs.EntryClassDeclaration;
@@ -22,11 +21,15 @@ import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
 import toorla.symbolTable.symbolTableItem.varItems.VarSymbolTableItem;
 import toorla.types.Type;
+import toorla.utilities.stack.Stack;
 
 import java.io.FileWriter;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class CodeGenerator extends Visitor<Void>{
-
+    private static Stack<String> breaks = new Stack<>();
+    private static Stack<String> continues = new Stack<>();
     private FileWriter writer;
     private int labelNum;
 
@@ -139,18 +142,52 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Equals equalsExpr) {
+        equalsExpr.getLhs().accept(this);
+        System.out.println(equalsExpr.getLhs().toString());
+
+
+
         return null;
     }
 
     public Void visit(GreaterThan gtExpr) {
+        gtExpr.getLhs().accept(this);
+        gtExpr.getRhs().accept(this);
+        int first=this.labelNum++;
+        this.writeInCurrentFile("if_icmple"+"Label"+first );
+        this.writeInCurrentFile("ldc 1");
+        int second=this.labelNum++;
+        this.writeInCurrentFile("goto "+"Label"+second);
+        this.writeInCurrentFile("Label"+first+":");
+        this.writeInCurrentFile("ldc 0");
+        this.writeInCurrentFile("Label"+second+":");
         return null;
     }
 
     public Void visit(LessThan lessThanExpr) {
+        lessThanExpr.getLhs().accept(this);
+        lessThanExpr.getRhs().accept(this);
+        int first=this.labelNum++;
+        this.writeInCurrentFile("if_icmpgt"+"Label"+first );
+        this.writeInCurrentFile("ldc 1");
+        int second=this.labelNum++;
+        this.writeInCurrentFile("goto "+"Label"+second);
+        this.writeInCurrentFile("Label"+first+":");
+        this.writeInCurrentFile("ldc 0");
+        this.writeInCurrentFile("Label"+second+":");
         return null;
     }
 
     public Void visit(Not notExpr) {
+        notExpr.accept(this);
+        int first=this.labelNum++;
+        this.writeInCurrentFile("ifeq " + "Label"+first);
+        this.writeInCurrentFile("ldc 0");
+        int second=this.labelNum++;
+        this.writeInCurrentFile("goto Label"+second);
+        this.writeInCurrentFile("Label+"+first+":");
+        this.writeInCurrentFile("ldc 1");
+        this.writeInCurrentFile("Label"+second+":");
         return null;
     }
 
@@ -159,6 +196,7 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Identifier identifier) {
+
         return null;
     }
 
@@ -184,6 +222,7 @@ public class CodeGenerator extends Visitor<Void>{
 
     // Statement
     public Void visit(PrintLine printStat) {
+
         return null;
     }
 
@@ -192,10 +231,35 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Conditional conditional) {
+        conditional.getCondition().accept(this);
+        labelNum++;
+        int first=labelNum;
+        this.writeInCurrentFile("ifeq "+"Label"+first);
+        conditional.getThenStatement().accept(this);
+        labelNum++;
+        int second=labelNum;
+        this.writeInCurrentFile("goto "+"Label"+second);
+        this.writeInCurrentFile("Label"+first+":");
+        conditional.getElseStatement().accept(this);
+        this.writeInCurrentFile("ifeq "+second);
+        conditional.getElseStatement().accept(this);
+        this.writeInCurrentFile("Label"+second+":");
         return null;
     }
 
     public Void visit(While whileStat) {
+        labelNum++;
+        int first=labelNum;
+        writeInCurrentFile("Label"+first+":");
+        whileStat.expr.accept(this);
+        labelNum++;
+        int second=labelNum;
+        this.writeInCurrentFile("ifeq "+second);
+        breaks.push("Label"+Integer.toString(second));
+        continues.push("Label"+Integer.toString(first));
+        whileStat.expr.accept(this);
+        this.writeInCurrentFile("goto "+"Label"+first);
+        this.writeInCurrentFile("Label"+second+":");
         return null;
     }
 
@@ -204,10 +268,14 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Break breakStat) {
+        String breakLabel=breaks.pop();
+        this.writeInCurrentFile("goto "+breakLabel);
         return null;
     }
 
     public Void visit(Continue continueStat) {
+        String continueLabel=continues.pop();
+        this.writeInCurrentFile("goto "+continueLabel);
         return null;
     }
 
