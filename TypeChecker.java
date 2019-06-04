@@ -34,18 +34,18 @@ import toorla.utilities.graph.GraphDoesNotContainNodeException;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Collection;
+import toorla.utilities.graph.Stack;
 import java.util.List;
 import java.util.Set;
 
 public class TypeChecker implements Visitor<Type> {
 
-    private boolean inLoop;
     private int numOfErrors;
     private Graph<String> inheritanceGraph;
     private String currentClass;
+    private static Stack<Boolean> inLoops = new Stack<>();
 
     public TypeChecker(Graph<String> graph){
-        this.inLoop = false;
         this.numOfErrors = 0;
         this.inheritanceGraph = graph;
     }
@@ -172,7 +172,7 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(While whileStat) {
-        this.inLoop = true;
+        inLoops.push(true);
         Type condType = whileStat.expr.accept(this);
         if(!(condType.toString().equals("(BoolType)") || condType.toString().equals("(UndefinedType)"))) {
             System.out.println("Error:Line:" + whileStat.expr.line + ":Condition type must be bool in Loop statements;");
@@ -181,13 +181,13 @@ public class TypeChecker implements Visitor<Type> {
         SymbolTable.push(new SymbolTable(SymbolTable.top()));
         whileStat.body.accept(this);
         SymbolTable.pop();
-        this.inLoop = false;
+        inLoops.pop();
         return null;
     }
 
     @Override
     public Type visit(Break breakStat) {
-        if(!this.inLoop) {
+        if(inLoops.getSize() == 0) {
             System.out.println("Error:Line:" + breakStat.line + ":Invalid use of Break, Break must be used as loop statement;");
             this.numOfErrors++;
         }
@@ -196,7 +196,7 @@ public class TypeChecker implements Visitor<Type> {
 
     @Override
     public Type visit(Continue continueStat) {
-        if(!this.inLoop) {
+        if(inLoops.getSize() == 0) {
             System.out.println("Error:Line:" + continueStat.line + ":Invalid use of Continue, Continue must be used as loop statement;");
             this.numOfErrors++;
         }
@@ -589,7 +589,7 @@ public class TypeChecker implements Visitor<Type> {
             identifierType.setLvalue();
             return identifierType;
         }catch(ItemNotFoundException e){
-            System.out.println("Error:Line:" + identifier.line + ":Variable " + identifier.getName() + " is not declared yet is this Scope;");
+            System.out.println("Error:Line:" + identifier.line + ":Variable " + identifier.getName() + " is not declared yet in this Scope;");
             this.numOfErrors++;
             Type undefinedIdentifier = new UndefinedType();
             undefinedIdentifier.setLvalue();
@@ -647,7 +647,6 @@ public class TypeChecker implements Visitor<Type> {
                     {
                         System.out.println("Error:Line:" + methodCall.line + ":Illegal access to Method " + methodName + " of an object of Class " + className + ";");
                         this.numOfErrors++;
-                        return new UndefinedType();
                     }
                     return methodItem.getReturnType();
                 }catch(ItemNotFoundException e2){
@@ -681,7 +680,6 @@ public class TypeChecker implements Visitor<Type> {
                     if(access.toString().equals("(ACCESS_MODIFIER_PRIVATE)") && !fieldCall.getInstance().toString().equals("(Self)")){
                         System.out.println("Error:Line:" + fieldCall.line + ":Illegal access to Field " + fieldName + " of an object of Class " + className + ";");
                         this.numOfErrors++;
-                        return returnUndefined;
                     }
                     Type fieldType = fieldItem.getVarType();
                     fieldType.setLvalue();
