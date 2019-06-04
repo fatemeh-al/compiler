@@ -22,12 +22,12 @@ import toorla.symbolTable.SymbolTable;
 import toorla.symbolTable.symbolTableItem.varItems.VarSymbolTableItem;
 import toorla.typeChecker.ExpressionTypeExtractor;
 import toorla.types.Type;
-import toorla.types.Undefined;
 import toorla.types.arrayType.ArrayType;
 import toorla.types.singleType.BoolType;
 import toorla.types.singleType.IntType;
 import toorla.types.singleType.StringType;
 import toorla.types.singleType.UserDefinedType;
+import toorla.utilities.graph.Graph;
 import toorla.utilities.stack.Stack;
 
 import java.io.FileWriter;
@@ -40,9 +40,13 @@ public class CodeGenerator extends Visitor<Void>{
     private static Stack<String> continues = new Stack<>();
     private FileWriter writer;
     private int labelNum;
+    private boolean isLeft;
+    private String currentClass;
 
-    public CodeGenerator(){
+    public CodeGenerator(Graph<String> classHierarchy){
+        this.isLeft = false;
         this.labelNum = 0;
+        this.expressionTypeExtractor = new ExpressionTypeExtractor(classHierarchy);
     }
 
     public Void writeInCurrentFile(String code){
@@ -168,11 +172,11 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile("ldc 1");
             this.writeInCurrentFile("Label"+second+":");
         }
-       if(Lhs_t instanceof ArrayType){
-           //JAVA/UTILL/ARRAY?!->nemidoonam chejoori estefade mishe:(
-       }
+        if(Lhs_t instanceof ArrayType){
+            //JAVA/UTILL/ARRAY?!->nemidoonam chejoori estefade mishe:(
+        }
         //moghayaseye 2 ta userdefinded type?shayad aslan method equal tarif nashode bashe barash
-       return null;
+        return null;
     }
 
     public Void visit(GreaterThan gtExpr) {
@@ -203,7 +207,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Not notExpr) {
+    public Void visit(Not notExpr) { //CHECK THIS NODE
         notExpr.accept(this);
         int first=this.labelNum++;
         this.writeInCurrentFile("ifeq " + "Label"+first);
@@ -213,31 +217,6 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile("Label+"+first+":");
         this.writeInCurrentFile("ldc 1");
         this.writeInCurrentFile("Label"+second+":");
-        return null;
-    }
-
-    public Void visit(MethodCall methodCall) {
-        return null;
-    }
-
-    public Void visit(Identifier identifier) {
-
-        return null;
-    }
-
-    public Void visit(NewArray newArray) {
-        return null;
-    }
-
-    public Void visit(NewClassInstance newClassInstance) {
-        return null;
-    }
-
-    public Void visit(FieldCall fieldCall) {
-        return null;
-    }
-
-    public Void visit(ArrayCall arrayCall) {
         return null;
     }
 
@@ -267,27 +246,77 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
+    public Void visit(Identifier identifier) {
+        try{
+            VarSymbolTableItem varItem = (VarSymbolTableItem)SymbolTable.top().get("var_" + identifier.getName());
+            Type varType = varItem.getType();
+            if(varItem.mustBeUsedAfterDef()){
+                //It is a variable. not a field
+                int index = varItem.getDefinitionNumber();
+                if(this.isLeft){ //It should be stored in
+                    if(varType instanceof IntType)
+                        this.writeInCurrentFile("istore " + index);
+                    else
+                        this.writeInCurrentFile("astore " + index);
+                }
+                else{ //It should be loaded into stack
+                    if(varType instanceof IntType)
+                        this.writeInCurrentFile("iload " + index);
+                    else
+                        this.writeInCurrentFile("aload " + index);
+                }
+            }
+            else{ // It is a field. not a variable
+                if(this.isLeft) { //It should be stored in
+                    this.writeInCurrentFile("putfield " + this.currentClass + "/" + identifier.getName() + " " + varType.getSymbol());
+                }
+                else { //It should be loaded into stack
+                    this.writeInCurrentFile("aload 0");
+                    this.writeInCurrentFile("getfield " + this.currentClass + "/" + identifier.getName() + " " + varType.getSymbol());
+                }
+            }
+        }catch(Exception e){}
+        return null;
+    }
+
+    public Void visit(NewArray newArray) {
+        return null;
+    }
+
+    public Void visit(MethodCall methodCall) {
+        return null;
+    }
+
+    public Void visit(NewClassInstance newClassInstance) {
+        return null;
+    }
+
+    public Void visit(FieldCall fieldCall) {
+        return null;
+    }
+
+    public Void visit(ArrayCall arrayCall) {
+        //aval reference be araye
+        //bad index araye
+        //bad age samte chape assignment bashe, aval bayad meghdari ke toosh gharare berize biyad roo stack
+        //va vadesh aastore ya iastore benevise
+        //vali age samte rast bashe, bad az index bayad aaload ya iaload benevise
+        return null;
+    }
+
     // Statement
     public Void visit(PrintLine printStat) {
         Type printType=printStat.getArg().accept(expressionTypeExtractor);
         printStat.getArg().accept(this);
         if(printType instanceof StringType){
-            this.writeInCurrentFile("invokevirtual  java/io/PrintStream.println:(Ljava/lang/String;)V")
+            this.writeInCurrentFile("invokevirtual  java/io/PrintStream.println:(Ljava/lang/String;)V");
         }
         if(printType instanceof IntType){
             this.writeInCurrentFile( "invokevirtual java/io/PrintStream.println:(I)V)");
         }
-        if(printType instanceof  BoolType){
-            this.writeInCurrentFile("invokevirtual java/io/PrintStream.println:(Z)V");
-        }
         if(printType instanceof ArrayType){
-             //java\util\arrays?
+            //java\util\arrays?
         }
-        //userdefined?
-        return null;
-    }
-
-    public Void visit(Assign assignStat) {
         return null;
     }
 
@@ -330,10 +359,6 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Return returnStat) {
-        return null;
-    }
-
     public Void visit(Break breakStat) {
         String breakLabel=breaks.pop();
         this.writeInCurrentFile("goto "+breakLabel);
@@ -346,18 +371,6 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(LocalVarDef localVarDef) {
-        return null;
-    }
-
-    public Void visit(IncStatement incStatement) {
-        return null;
-    }
-
-    public Void visit(DecStatement decStatement) {
-        return null;
-    }
-
     public Void visit(Skip skip) {
         return null;
     }
@@ -367,6 +380,30 @@ public class CodeGenerator extends Visitor<Void>{
         for(Statement stat: block.body)
             stat.accept(this);
         SymbolTable.pop();
+        return null;
+    }
+
+    public Void visit(Assign assignStat) {
+        //aval check kon age samte rastet ye identifier e ke filed e classe, avval "aload 0" benevis
+        //bad samte rast ro accept kon
+        //bad this.isLeft ro true kon va samte chap ro accept kon
+        //bad hatman this.isLeft ro false kon
+        return null;
+    }
+
+    public Void visit(Return returnStat) {
+        return null;
+    }
+
+    public Void visit(LocalVarDef localVarDef) {
+        return null;
+    }
+
+    public Void visit(IncStatement incStatement) {
+        return null;
+    }
+
+    public Void visit(DecStatement decStatement) {
         return null;
     }
 
@@ -415,16 +452,16 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(ClassDeclaration classDeclaration) {
-        //Method <init> bayad ezafe konam???
-        //Age bayad esme classa ba fileshoon yeki bashe, pas "class_" ro koja ezafe konam ke ruuner handle she?
+        //Method <init> bayad ezafe konam??? ---> ARE. YADET NARE
         try{
-            this.writer = new FileWriter("artifact/" + classDeclaration.getName().getName() + ".j");
+            this.writer = new FileWriter("artifact/class_" + classDeclaration.getName().getName() + ".j");
             this.writeInCurrentFile(".class public " + "class_" + classDeclaration.getName().getName());
             if(classDeclaration.getParentName().getName().equals("Any"))
                 this.writeInCurrentFile(".super java/lang/Object");
             else
                 this.writeInCurrentFile(".super class_" +classDeclaration.getParentName().getName());
             SymbolTable.pushFromQueue();
+            this.currentClass = classDeclaration.getName().getName();
             for(ClassMemberDeclaration cmd: classDeclaration.getClassMembers())
                 cmd.accept(this);
             SymbolTable.pop();
@@ -434,16 +471,16 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(EntryClassDeclaration entryClassDeclaration) {
-        //Method <init> bayad ezafe konam???
-        //Age bayad esme classa ba fileshoon yeki bashe, pas "class_" ro koja ezafe konam ke ruuner handle she?
+        //Method <init> bayad ezafe konam???  ---> ARE. YADET NARE
         try{
-            this.writer = new FileWriter("artifact/" + entryClassDeclaration.getName().getName() + ".j");
+            this.writer = new FileWriter("artifact/class_" + entryClassDeclaration.getName().getName() + ".j");
             this.writeInCurrentFile(".class public class_" + entryClassDeclaration.getName().getName());
             if(entryClassDeclaration.getParentName().getName().equals("Any"))
                 this.writeInCurrentFile(".super java/lang/Object");
             else
                 this.writeInCurrentFile(".super class_" + entryClassDeclaration.getParentName().getName());
             SymbolTable.pushFromQueue();
+            this.currentClass = entryClassDeclaration.getName().getName();
             for(ClassMemberDeclaration cmd: entryClassDeclaration.getClassMembers())
                 cmd.accept(this);
             SymbolTable.pop();
