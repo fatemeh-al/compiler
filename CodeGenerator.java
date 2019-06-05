@@ -154,7 +154,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Equals equalsExpr) { //CHECK THIS NODE
+    public Void visit(Equals equalsExpr) {
         equalsExpr.getLhs().accept(this);
         equalsExpr.getRhs().accept(this);
         Type Lhs_t=equalsExpr.getLhs().accept(expressionTypeExtractor);
@@ -180,7 +180,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(GreaterThan gtExpr) {//CHECK THIS NODE
+    public Void visit(GreaterThan gtExpr) {
         gtExpr.getLhs().accept(this);
         gtExpr.getRhs().accept(this);
         int first=this.labelNum++;
@@ -194,7 +194,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(LessThan lessThanExpr) { //CHECK THIS NODE
+    public Void visit(LessThan lessThanExpr) {
         lessThanExpr.getLhs().accept(this);
         lessThanExpr.getRhs().accept(this);
         int first=this.labelNum++;
@@ -208,7 +208,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Not notExpr) { //CHECK THIS NODE
+    public Void visit(Not notExpr) {
         notExpr.accept(this);
         int first=this.labelNum++;
         this.writeInCurrentFile("ifeq " + "Label"+first);
@@ -221,7 +221,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(NotEquals notEquals) { //CHECK THIS NODE
+    public Void visit(NotEquals notEquals) {
         notEquals.getLhs().accept(this);
         notEquals.getRhs().accept(this);
         Type Lhs_t=notEquals.getLhs().accept(expressionTypeExtractor);
@@ -301,11 +301,20 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(MethodCall methodCall) {
+    public Void visit(FieldCall fieldCall) {
+        fieldCall.getInstance().accept(this);
+        //bad age samte chape assignment bashe, aval bayad meghdari ke toosh gharare berize biyad roo stack
+        //va badesh put field bezane
+        //vali age samte rast bashe, getfield mizane va tamoom
         return null;
     }
 
-    public Void visit(FieldCall fieldCall) {
+    public Void visit(MethodCall methodCall) {
+        methodCall.getInstance().accept(this);
+        for(Expression arg: methodCall.getArgs())
+            arg.accept(this);
+        this.writeInCurrentFile("");//invokevirtual ClassName/MethodName(ArgSymbols)ReturnSymbol
+        //Return type va esme classesho az koja biyaram???
         return null;
     }
 
@@ -320,7 +329,7 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     // Statement
-    public Void visit(PrintLine printStat) { //CHECK THIS NODE
+    public Void visit(PrintLine printStat) {
         //Ye getstatic inja kame
         Type printType=printStat.getArg().accept(expressionTypeExtractor);
         printStat.getArg().accept(this);
@@ -336,7 +345,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Conditional conditional) { //CHECK THIS NODE
+    public Void visit(Conditional conditional) {
         SymbolTable.pushFromQueue();
         conditional.getCondition().accept(this);
         labelNum++;
@@ -357,7 +366,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(While whileStat) { //CHECK THIS NODE
+    public Void visit(While whileStat) {
         SymbolTable.pushFromQueue();
         labelNum++;
         int first=labelNum;
@@ -375,19 +384,27 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Break breakStat) { //CHECK THIS NODE
+    public Void visit(Break breakStat) {
         String breakLabel=breaks.pop();
         this.writeInCurrentFile("goto "+breakLabel);
         return null;
     }
 
-    public Void visit(Continue continueStat) { //CHECK THIS NODE
+    public Void visit(Continue continueStat) {
         String continueLabel=continues.pop();
         this.writeInCurrentFile("goto "+continueLabel);
         return null;
     }
 
     public Void visit(Skip skip) {
+        return null;
+    }
+
+    public Void visit(LocalVarDef localVarDef) {
+        localVarDef.getInitialValue().accept(this);
+        this.isLeft = true;
+        localVarDef.getLocalVarName().accept(this);
+        this.isLeft = false;
         return null;
     }
 
@@ -399,6 +416,16 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
+    public Void visit(Return returnStat) {
+        returnStat.getReturnedExpr().accept(this);
+        Type returnType = returnStat.accept(expressionTypeExtractor);
+        if((returnType instanceof IntType) || (returnType instanceof BoolType))
+            this.writeInCurrentFile("ireturn");
+        else
+            this.writeInCurrentFile("areturn");
+        return null;
+    }
+
     public Void visit(Assign assignStat) {
         //aval check kon age samte rastet ye identifier e ke filed e classe, avval "aload 0" benevis
         //bad samte rast ro accept kon
@@ -407,19 +434,13 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Return returnStat) {
-        return null;
-    }
-
-    public Void visit(LocalVarDef localVarDef) {
-        return null;
-    }
-
     public Void visit(IncStatement incStatement) {
+        //mese assign mimoone
         return null;
     }
 
     public Void visit(DecStatement decStatement) {
+        //mese assign mimoone
         return null;
     }
 
