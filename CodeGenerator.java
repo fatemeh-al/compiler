@@ -19,6 +19,8 @@ import toorla.ast.statement.localVarStats.LocalVarDef;
 import toorla.ast.statement.localVarStats.LocalVarsDefinitions;
 import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
+import toorla.symbolTable.symbolTableItem.ClassSymbolTableItem;
+import toorla.symbolTable.symbolTableItem.MethodSymbolTableItem;
 import toorla.symbolTable.symbolTableItem.varItems.VarSymbolTableItem;
 import toorla.typeChecker.ExpressionTypeExtractor;
 import toorla.types.Type;
@@ -42,6 +44,8 @@ public class CodeGenerator extends Visitor<Void>{
     private int labelNum;
     private boolean isLeft;
     private String currentClass;
+
+    //Every comment is important. check if all of them are done
 
     public CodeGenerator(Graph<String> classHierarchy){
         this.isLeft = false;
@@ -208,7 +212,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Not notExpr) {
+    public Void visit(Not notExpr) { 
         notExpr.accept(this);
         int first=this.labelNum++;
         this.writeInCurrentFile("ifeq " + "Label"+first);
@@ -303,34 +307,58 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(FieldCall fieldCall) {
         fieldCall.getInstance().accept(this);
-        //bad age samte chape assignment bashe, aval bayad meghdari ke toosh gharare berize biyad roo stack
-        //va badesh put field bezane
-        //vali age samte rast bashe, getfield mizane va tamoom
+        if(!isLeft){
+            fieldCall.getField().accept(this);
+        }
         return null;
     }
 
     public Void visit(MethodCall methodCall) {
+        Type instanceType = methodCall.getInstance().accept(expressionTypeExtractor);
+        MethodSymbolTableItem methodItem = null;
+        String className = currentClass;
+        if(methodCall.getInstance() instanceof Self){
+            try{
+                methodItem = (MethodSymbolTableItem)SymbolTable.top().get("method_" + methodCall.getMethodName().getName());
+            }catch(Exception e){}
+        }
+        else{
+            className = instanceType.getSymbol();
+            try {
+                //Inja ro check kon ke esme classo dorost begire va betoone SymbolTablesh ro biyare
+                ClassSymbolTableItem classItem = (ClassSymbolTableItem) SymbolTable.root.get(className);
+                SymbolTable classSymbolTable = classItem.getSymbolTable();
+                methodItem = (MethodSymbolTableItem) classSymbolTable.get("method_"+methodCall.getMethodName().getName());
+            }catch(Exception e2){}
+        }
         methodCall.getInstance().accept(this);
         for(Expression arg: methodCall.getArgs())
             arg.accept(this);
-        this.writeInCurrentFile("");//invokevirtual ClassName/MethodName(ArgSymbols)ReturnSymbol
-        //Return type va esme classesho az koja biyaram???
+        String descriptor = methodCall.getMethodName().getName() + "(";
+        for(Type argType: methodItem.getArgumentsTypes())
+            descriptor += argType.getSymbol();
+        descriptor = descriptor + ")" + methodItem.getReturnType().getSymbol();
+        this.writeInCurrentFile("invokevirtual "+className+"/" + descriptor);
         return null;
     }
 
     public Void visit(ArrayCall arrayCall) {
         arrayCall.getInstance().accept(this);
         arrayCall.getIndex().accept(this);
-        //bad age samte chape assignment bashe, aval bayad meghdari ke toosh gharare berize biyad roo stack
-        //va vadesh aastore ya iastore benevise
-        //vali age samte rast bashe, bad az index bayad aaload ya iaload benevise
+        Type arrayType=arrayCall.getInstance().accept(expressionTypeExtractor);
+        if(!isLeft){
+            if((arrayType instanceof IntType) ||(arrayType instanceof BoolType))
+                this.writeInCurrentFile("iaload");
+            else
+                this.writeInCurrentFile("aaload");
+        }
 
         return null;
     }
 
     // Statement
     public Void visit(PrintLine printStat) {
-        //Ye getstatic inja kame
+        this.writeInCurrentFile("getstatic java/lang/System/out Ljava/io/PrintStream;");
         Type printType=printStat.getArg().accept(expressionTypeExtractor);
         printStat.getArg().accept(this);
         if(printType instanceof StringType){
@@ -340,12 +368,12 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile( "invokevirtual java/io/PrintStream.println:(I)V)");
         }
         if(printType instanceof ArrayType){
-            //java\util\arrays?
+            //java.util.arrays?
         }
         return null;
     }
 
-    public Void visit(Conditional conditional) {
+    public Void visit(Conditional conditional) { 
         SymbolTable.pushFromQueue();
         conditional.getCondition().accept(this);
         labelNum++;
@@ -366,7 +394,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(While whileStat) {
+    public Void visit(While whileStat) { 
         SymbolTable.pushFromQueue();
         labelNum++;
         int first=labelNum;
@@ -381,6 +409,7 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile("goto "+"Label"+first);
         this.writeInCurrentFile("Label"+second+":");
         SymbolTable.pop();
+        //fek konam bayad az stack break va continue pop beshe
         return null;
     }
 
@@ -427,26 +456,56 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Assign assignStat) {
-        //aval check kon age samte rastet ye identifier e ke filed e classe, avval "aload 0" benevis
-        //bad samte rast ro accept kon
-        //bad this.isLeft ro true kon va samte chap ro accept kon
-        //bad hatman this.isLeft ro false kon
+        if(assignStat.getLvalue() instanceof ArrayCall){
+            this.isLeft=true;
+            assignStat.getLvalue().accept(this);
+            this.isLeft=false;
+            assignStat.getRvalue().accept(this);
+            Type rType=assignStat.getRvalue().accept(expressionTypeExtractor);
+            if((rType instanceof IntType) || (rType instanceof  BoolType))
+                this.writeInCurrentFile("iastore");
+            else
+                this.writeInCurrentFile("aastore");
+        }
+        else if(assignStat.getLvalue() instanceof FieldCall){
+            this.isLeft=true;
+            assignStat.getLvalue().accept(this);
+            this.isLeft=false;
+            assignStat.getRvalue().accept(this);
+            this.isLeft=true;
+            ((FieldCall) assignStat.getLvalue()).getField().accept(this);
+            this.isLeft=false;
+        }
+
+        else{//identifier
+            try {
+                VarSymbolTableItem varItem = (VarSymbolTableItem) SymbolTable.top().get("var_" + ((Identifier) (assignStat.getLvalue())).getName());
+                if (!varItem.mustBeUsedAfterDef())
+                    this.writeInCurrentFile("aload 0");
+            }
+            catch (Exception e){}
+            assignStat.getRvalue().accept(this);
+            this.isLeft=true;
+            assignStat.getLvalue().accept(this);
+            this.isLeft=false;
+        }
         return null;
     }
 
     public Void visit(IncStatement incStatement) {
-        //mese assign mimoone
+        Assign converter=new Assign(incStatement.getOperand(),new Plus(incStatement.getOperand(),new IntValue(1)));
+        converter.accept(this);
         return null;
     }
 
     public Void visit(DecStatement decStatement) {
-        //mese assign mimoone
+        Assign converter=new Assign(decStatement.getOperand(),new Minus(decStatement.getOperand(),new IntValue(1)));
+        converter.accept(this);
         return null;
     }
 
     // declarations
     public Void visit(ParameterDeclaration parameterDeclaration) {
-        //Anything to do here???
         return null;
     }
 
@@ -535,3 +594,14 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 }
+
+//be nazaram assign ghesmate fieldCall ghalate
+//khode fieldCall ham ehtemalan ghalate
+//classe runner ro bayad ezafe konim
+//method init ro be har class bayad ezafe konim
+//equals va not equals va print ghesmate array bayad check she
+//tak take comment ha check shan anjam dade bashim
+
+
+
+
