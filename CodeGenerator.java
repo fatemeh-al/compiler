@@ -145,6 +145,7 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(StringValue stringValue) {
         this.writeInCurrentFile("ldc " + stringValue.getConstant());
+        //bipush dorost tar nist??
         return null;
     }
 
@@ -153,7 +154,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Equals equalsExpr) {
+    public Void visit(Equals equalsExpr) { //CHECK THIS NODE
         equalsExpr.getLhs().accept(this);
         equalsExpr.getRhs().accept(this);
         Type Lhs_t=equalsExpr.getLhs().accept(expressionTypeExtractor);
@@ -179,7 +180,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(GreaterThan gtExpr) {
+    public Void visit(GreaterThan gtExpr) {//CHECK THIS NODE
         gtExpr.getLhs().accept(this);
         gtExpr.getRhs().accept(this);
         int first=this.labelNum++;
@@ -193,7 +194,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(LessThan lessThanExpr) {
+    public Void visit(LessThan lessThanExpr) { //CHECK THIS NODE
         lessThanExpr.getLhs().accept(this);
         lessThanExpr.getRhs().accept(this);
         int first=this.labelNum++;
@@ -220,7 +221,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(NotEquals notEquals) {
+    public Void visit(NotEquals notEquals) { //CHECK THIS NODE
         notEquals.getLhs().accept(this);
         notEquals.getRhs().accept(this);
         Type Lhs_t=notEquals.getLhs().accept(expressionTypeExtractor);
@@ -280,14 +281,27 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(NewArray newArray) {
-        return null;
-    }
-
-    public Void visit(MethodCall methodCall) {
+        newArray.getLength().accept(this);
+        Type arrayType = newArray.getType();
+        if(arrayType instanceof IntType)
+            this.writeInCurrentFile("newarray int");
+        else if(arrayType instanceof BoolType)
+            this.writeInCurrentFile("newarray boolean");
+        else if(arrayType instanceof StringType)
+            this.writeInCurrentFile("anewarray java/lang/String");//java/lang/String   ya   java/lang/String;
+        else if(arrayType instanceof UserDefinedType)
+            this.writeInCurrentFile("anewarray " + arrayType.getSymbol());
         return null;
     }
 
     public Void visit(NewClassInstance newClassInstance) {
+        this.writeInCurrentFile("new " + newClassInstance.getClassName().getName());
+        this.writeInCurrentFile("dup");
+        this.writeInCurrentFile("invokespecial " + newClassInstance.getClassName().getName()+"/<init>()V");
+        return null;
+    }
+
+    public Void visit(MethodCall methodCall) {
         return null;
     }
 
@@ -296,16 +310,18 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(ArrayCall arrayCall) {
-        //aval reference be araye
-        //bad index araye
+        arrayCall.getInstance().accept(this);
+        arrayCall.getIndex().accept(this);
         //bad age samte chape assignment bashe, aval bayad meghdari ke toosh gharare berize biyad roo stack
         //va vadesh aastore ya iastore benevise
         //vali age samte rast bashe, bad az index bayad aaload ya iaload benevise
+
         return null;
     }
 
     // Statement
-    public Void visit(PrintLine printStat) {
+    public Void visit(PrintLine printStat) { //CHECK THIS NODE
+        //Ye getstatic inja kame
         Type printType=printStat.getArg().accept(expressionTypeExtractor);
         printStat.getArg().accept(this);
         if(printType instanceof StringType){
@@ -320,7 +336,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Conditional conditional) {
+    public Void visit(Conditional conditional) { //CHECK THIS NODE
         SymbolTable.pushFromQueue();
         conditional.getCondition().accept(this);
         labelNum++;
@@ -341,7 +357,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(While whileStat) {
+    public Void visit(While whileStat) { //CHECK THIS NODE
         SymbolTable.pushFromQueue();
         labelNum++;
         int first=labelNum;
@@ -359,13 +375,13 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Break breakStat) {
+    public Void visit(Break breakStat) { //CHECK THIS NODE
         String breakLabel=breaks.pop();
         this.writeInCurrentFile("goto "+breakLabel);
         return null;
     }
 
-    public Void visit(Continue continueStat) {
+    public Void visit(Continue continueStat) { //CHECK THIS NODE
         String continueLabel=continues.pop();
         this.writeInCurrentFile("goto "+continueLabel);
         return null;
