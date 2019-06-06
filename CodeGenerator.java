@@ -477,6 +477,7 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(LocalVarDef localVarDef) {
+        SymbolTable.define();
         this.definedVars++;
         localVarDef.getInitialValue().accept(this);
         this.isLeft = true;
@@ -575,6 +576,7 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(MethodDeclaration methodDeclaration) {
+        SymbolTable.reset();
         String descriptor = ".method ";
         if(methodDeclaration.getAccessModifier().toString().equals("(ACCESS_MODIFIER_PUBLIC)"))
             descriptor += "public ";
