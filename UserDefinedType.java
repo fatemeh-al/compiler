@@ -19,8 +19,10 @@ public class UserDefinedType extends SingleType {
         this.typeClass = typeClass;
     }
 
+    public String getClassName() { return this.typeClass.getName().getName(); }
+
     @Override
-    public String getSymbol(){ return "class_" + this.typeClass.getName().getName(); }
+    public String getSymbol(){ return "Lclass_" + this.typeClass.getName().getName() + ";"; }
 
     @Override
     public String toString() {
