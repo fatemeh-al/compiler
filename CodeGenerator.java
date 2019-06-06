@@ -44,6 +44,7 @@ public class CodeGenerator extends Visitor<Void>{
     private int labelNum;
     private boolean isLeft;
     private String currentClass;
+    private String putFieldCommand;
 
     //Every comment is important. check if all of them are done
 
@@ -149,7 +150,6 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(StringValue stringValue) {
         this.writeInCurrentFile("ldc " + stringValue.getConstant());
-        //bipush dorost tar nist??
         return null;
     }
 
@@ -158,7 +158,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Equals equalsExpr) {
+    public Void visit(Equals equalsExpr) { //CHECK THIS NODE
         equalsExpr.getLhs().accept(this);
         equalsExpr.getRhs().accept(this);
         Type Lhs_t=equalsExpr.getLhs().accept(expressionTypeExtractor);
@@ -184,7 +184,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(GreaterThan gtExpr) {
+    public Void visit(GreaterThan gtExpr) {//CHECK THIS NODE
         gtExpr.getLhs().accept(this);
         gtExpr.getRhs().accept(this);
         int first=this.labelNum++;
@@ -198,7 +198,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(LessThan lessThanExpr) {
+    public Void visit(LessThan lessThanExpr) { //CHECK THIS NODE
         lessThanExpr.getLhs().accept(this);
         lessThanExpr.getRhs().accept(this);
         int first=this.labelNum++;
@@ -212,7 +212,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Not notExpr) { 
+    public Void visit(Not notExpr) { //CHECK THIS NODE
         notExpr.accept(this);
         int first=this.labelNum++;
         this.writeInCurrentFile("ifeq " + "Label"+first);
@@ -225,7 +225,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(NotEquals notEquals) {
+    public Void visit(NotEquals notEquals) { //CHECK THIS NODE
         notEquals.getLhs().accept(this);
         notEquals.getRhs().accept(this);
         Type Lhs_t=notEquals.getLhs().accept(expressionTypeExtractor);
@@ -294,7 +294,7 @@ public class CodeGenerator extends Visitor<Void>{
         else if(arrayType instanceof StringType)
             this.writeInCurrentFile("anewarray java/lang/String");//java/lang/String   ya   java/lang/String;
         else if(arrayType instanceof UserDefinedType)
-            this.writeInCurrentFile("anewarray " + arrayType.getSymbol());
+            this.writeInCurrentFile("anewarray " + ((UserDefinedType)arrayType).getClassName());
         return null;
     }
 
@@ -306,9 +306,38 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(FieldCall fieldCall) {
-        fieldCall.getInstance().accept(this);
-        if(!isLeft){
-            fieldCall.getField().accept(this);
+        if(this.isLeft) {
+            this.isLeft = false;
+            fieldCall.getInstance().accept(this);
+            this.isLeft = true;
+        }
+        else
+            fieldCall.getInstance().accept(this);
+        Type instanceType = fieldCall.getInstance().accept(expressionTypeExtractor);
+        String className = currentClass;
+        VarSymbolTableItem fieldItem = null;
+        if(fieldCall.getInstance() instanceof  Self){
+            try{
+                fieldItem = (VarSymbolTableItem)SymbolTable.top().get("var_" + fieldCall.getField().getName());
+            }catch(Exception e1){}
+        }
+        else if(instanceType instanceof UserDefinedType){
+            className = ((UserDefinedType)instanceType).getClassName();
+            try {
+                ClassSymbolTableItem classItem = (ClassSymbolTableItem) SymbolTable.root.get(className);
+                SymbolTable classSymbolTable = classItem.getSymbolTable();
+                fieldItem = (VarSymbolTableItem) classSymbolTable.get("var_" + fieldCall.getField().getName());
+            }catch(Exception e2){}
+        }
+        if(this.isLeft){
+            this.putFieldCommand = "putfield " + className + "/" + fieldCall.getField().getName() + " " + fieldItem.getType().getSymbol();
+            this.isLeft = false;
+        }
+        else {
+            if(instanceType instanceof ArrayType)
+                this.writeInCurrentFile("arraylength"); // darim asan in dastooro?
+            else
+                this.writeInCurrentFile("getfield " + className + "/" + fieldCall.getField().getName() + " " + fieldItem.getType().getSymbol());
         }
         return null;
     }
@@ -320,17 +349,17 @@ public class CodeGenerator extends Visitor<Void>{
         if(methodCall.getInstance() instanceof Self){
             try{
                 methodItem = (MethodSymbolTableItem)SymbolTable.top().get("method_" + methodCall.getMethodName().getName());
-            }catch(Exception e){}
+            }catch(Exception e1){}
         }
-        else{
-            className = instanceType.getSymbol();
+        else if(instanceType instanceof  UserDefinedType){
+            className = ((UserDefinedType)instanceType).getClassName();
             try {
-                //Inja ro check kon ke esme classo dorost begire va betoone SymbolTablesh ro biyare
                 ClassSymbolTableItem classItem = (ClassSymbolTableItem) SymbolTable.root.get(className);
                 SymbolTable classSymbolTable = classItem.getSymbolTable();
                 methodItem = (MethodSymbolTableItem) classSymbolTable.get("method_"+methodCall.getMethodName().getName());
             }catch(Exception e2){}
         }
+        //else ke nadare?
         methodCall.getInstance().accept(this);
         for(Expression arg: methodCall.getArgs())
             arg.accept(this);
@@ -342,22 +371,29 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(ArrayCall arrayCall) {
-        arrayCall.getInstance().accept(this);
-        arrayCall.getIndex().accept(this);
+    public Void visit(ArrayCall arrayCall) { //CHECK THIS NODE
+        if(this.isLeft) {
+            this.isLeft = false;
+            arrayCall.getInstance().accept(this);
+            arrayCall.getIndex().accept(this);
+            this.isLeft = true;
+        }
+        else{
+            arrayCall.getInstance().accept(this);
+            arrayCall.getIndex().accept(this);
+        }
         Type arrayType=arrayCall.getInstance().accept(expressionTypeExtractor);
-        if(!isLeft){
+        if(!this.isLeft){
             if((arrayType instanceof IntType) ||(arrayType instanceof BoolType))
                 this.writeInCurrentFile("iaload");
             else
                 this.writeInCurrentFile("aaload");
         }
-
         return null;
     }
 
     // Statement
-    public Void visit(PrintLine printStat) {
+    public Void visit(PrintLine printStat) { //CHECK THIS NODE
         this.writeInCurrentFile("getstatic java/lang/System/out Ljava/io/PrintStream;");
         Type printType=printStat.getArg().accept(expressionTypeExtractor);
         printStat.getArg().accept(this);
@@ -368,12 +404,14 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile( "invokevirtual java/io/PrintStream.println:(I)V)");
         }
         if(printType instanceof ArrayType){
-            //java.util.arrays?
+            this.writeInCurrentFile("invokestatic java/util/Arrays/toString([Ljava/lang/Object;)Ljava/lang/String;");
+            this.writeInCurrentFile("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
         }
         return null;
     }
 
-    public Void visit(Conditional conditional) { 
+    public Void visit(Conditional conditional) { //CHECK THIS NODE
+        this.writeInCurrentFile("; start if");
         SymbolTable.pushFromQueue();
         conditional.getCondition().accept(this);
         labelNum++;
@@ -391,10 +429,12 @@ public class CodeGenerator extends Visitor<Void>{
         conditional.getElseStatement().accept(this);
         this.writeInCurrentFile("Label"+second+":");
         SymbolTable.pop();
+        this.writeInCurrentFile("; end if");
         return null;
     }
 
-    public Void visit(While whileStat) { 
+    public Void visit(While whileStat) { //CHECK THIS NODE
+        this.writeInCurrentFile("; while start");
         SymbolTable.pushFromQueue();
         labelNum++;
         int first=labelNum;
@@ -409,18 +449,22 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile("goto "+"Label"+first);
         this.writeInCurrentFile("Label"+second+":");
         SymbolTable.pop();
-        //fek konam bayad az stack break va continue pop beshe
+        breaks.pop();
+        continues.pop();
+        this.writeInCurrentFile("; end while");
         return null;
     }
 
-    public Void visit(Break breakStat) {
+    public Void visit(Break breakStat) { //CHECK THIS NODE
         String breakLabel=breaks.pop();
+        breaks.push(breakLabel);
         this.writeInCurrentFile("goto "+breakLabel);
         return null;
     }
 
-    public Void visit(Continue continueStat) {
+    public Void visit(Continue continueStat) { //CHECK THIS NODE
         String continueLabel=continues.pop();
+        continues.push(continueLabel);
         this.writeInCurrentFile("goto "+continueLabel);
         return null;
     }
@@ -455,7 +499,7 @@ public class CodeGenerator extends Visitor<Void>{
         return null;
     }
 
-    public Void visit(Assign assignStat) {
+    public Void visit(Assign assignStat) { //CHECK ArrayCall and Identifier
         if(assignStat.getLvalue() instanceof ArrayCall){
             this.isLeft=true;
             assignStat.getLvalue().accept(this);
@@ -468,13 +512,11 @@ public class CodeGenerator extends Visitor<Void>{
                 this.writeInCurrentFile("aastore");
         }
         else if(assignStat.getLvalue() instanceof FieldCall){
-            this.isLeft=true;
+            this.isLeft = true;
             assignStat.getLvalue().accept(this);
-            this.isLeft=false;
+            this.isLeft = false;
             assignStat.getRvalue().accept(this);
-            this.isLeft=true;
-            ((FieldCall) assignStat.getLvalue()).getField().accept(this);
-            this.isLeft=false;
+            this.writeInCurrentFile(this.putFieldCommand);
         }
 
         else{//identifier
@@ -540,15 +582,16 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile(".limit stack 1000");
         this.writeInCurrentFile(".limit locals 100");
         SymbolTable.pushFromQueue();
-        for(Statement stat: methodDeclaration.getBody())
+        for(Statement stat: methodDeclaration.getBody()) {
+            this.writeInCurrentFile("; a new statement");
             stat.accept(this);
+        }
         this.writeInCurrentFile(".end method");
         SymbolTable.pop();
         return null;
     }
 
     public Void visit(ClassDeclaration classDeclaration) {
-        //Method <init> bayad ezafe konam??? ---> ARE. YADET NARE
         try{
             this.writer = new FileWriter("artifact/class_" + classDeclaration.getName().getName() + ".j");
             this.writeInCurrentFile(".class public " + "class_" + classDeclaration.getName().getName());
@@ -557,6 +600,11 @@ public class CodeGenerator extends Visitor<Void>{
             else
                 this.writeInCurrentFile(".super class_" +classDeclaration.getParentName().getName());
             SymbolTable.pushFromQueue();
+            this.writeInCurrentFile(".method public <init>()V");
+            this.writeInCurrentFile("aload_0");
+            this.writeInCurrentFile("invokespecial java/lang/Object/<init>()V");
+            this.writeInCurrentFile("return");
+            this.writeInCurrentFile(".end method");
             this.currentClass = classDeclaration.getName().getName();
             for(ClassMemberDeclaration cmd: classDeclaration.getClassMembers())
                 cmd.accept(this);
@@ -567,7 +615,6 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(EntryClassDeclaration entryClassDeclaration) {
-        //Method <init> bayad ezafe konam???  ---> ARE. YADET NARE
         try{
             this.writer = new FileWriter("artifact/class_" + entryClassDeclaration.getName().getName() + ".j");
             this.writeInCurrentFile(".class public class_" + entryClassDeclaration.getName().getName());
@@ -576,6 +623,11 @@ public class CodeGenerator extends Visitor<Void>{
             else
                 this.writeInCurrentFile(".super class_" + entryClassDeclaration.getParentName().getName());
             SymbolTable.pushFromQueue();
+            this.writeInCurrentFile(".method public <init>()V");
+            this.writeInCurrentFile("aload_0");
+            this.writeInCurrentFile("invokespecial java/lang/Object/<init>()V");
+            this.writeInCurrentFile("return");
+            this.writeInCurrentFile(".end method");
             this.currentClass = entryClassDeclaration.getName().getName();
             for(ClassMemberDeclaration cmd: entryClassDeclaration.getClassMembers())
                 cmd.accept(this);
@@ -586,22 +638,36 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Program program) {
-        //create Runner class
+        String entryClassName="";
         SymbolTable.pushFromQueue();
-        for( ClassDeclaration classDeclaration : program.getClasses() )
+        for( ClassDeclaration classDeclaration : program.getClasses() ) {
+            if (classDeclaration instanceof EntryClassDeclaration)
+                entryClassName=classDeclaration.getName().getName();
             classDeclaration.accept(this);
+            System.out.println("each class");
+        }
+        try {
+            this.writer = new FileWriter("artifact/Runner.j");
+            this.writeInCurrentFile(".super java/lang/Object");
+            this.writeInCurrentFile(".method public <init>()V");
+            this.writeInCurrentFile("aload_0");
+            this.writeInCurrentFile("invokespecial java/lang/Object/<init>()V");
+            this.writeInCurrentFile("return");
+            this.writeInCurrentFile(".end method");
+            this.writeInCurrentFile(".method public static main([Ljava/lang/String;)V");
+            this.writeInCurrentFile(".limit stack 1000");
+            this.writeInCurrentFile(".limit locals 100");
+            this.writeInCurrentFile("new " + entryClassName);
+            this.writeInCurrentFile("dup");
+            this.writeInCurrentFile("invokespecial " + entryClassName+"/<init>()V");
+            this.writeInCurrentFile("invokevirtual "+entryClassName+"/main:()I");
+            this.writeInCurrentFile("istore 1");
+            this.writeInCurrentFile("return");
+            this.writeInCurrentFile(".end method");
+            this.writer.close();
+        }
+        catch(Exception e){}
         SymbolTable.pop();
         return null;
     }
 }
-
-//be nazaram assign ghesmate fieldCall ghalate
-//khode fieldCall ham ehtemalan ghalate
-//classe runner ro bayad ezafe konim
-//method init ro be har class bayad ezafe konim
-//equals va not equals va print ghesmate array bayad check she
-//tak take comment ha check shan anjam dade bashim
-
-
-
-
