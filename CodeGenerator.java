@@ -437,7 +437,7 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile("ifeq "+ "Label"+ second);
         breaks.push("Label"+second);
         continues.push("Label"+first);
-        whileStat.expr.accept(this);
+        whileStat.body.accept(this);
         this.writeInCurrentFile("goto "+"Label"+first);
         this.writeInCurrentFile("Label"+second+":");
         SymbolTable.pop();
