@@ -185,10 +185,12 @@ public class CodeGenerator extends Visitor<Void>{
     public Void visit(GreaterThan gtExpr) {//CHECK THIS NODE
         gtExpr.getLhs().accept(this);
         gtExpr.getRhs().accept(this);
-        int first=this.labelNum++;
+        this.labelNum++;
+        int first = this.labelNum;
         this.writeInCurrentFile("if_icmple "+"Label"+first );
         this.writeInCurrentFile("ldc 1");
-        int second=this.labelNum++;
+        this.labelNum++;
+        int second = this.labelNum;
         this.writeInCurrentFile("goto "+"Label"+second);
         this.writeInCurrentFile("Label"+first+":");
         this.writeInCurrentFile("ldc 0");
@@ -199,10 +201,12 @@ public class CodeGenerator extends Visitor<Void>{
     public Void visit(LessThan lessThanExpr) { //CHECK THIS NODE
         lessThanExpr.getLhs().accept(this);
         lessThanExpr.getRhs().accept(this);
-        int first=this.labelNum++;
+        this.labelNum++;
+        int first = this.labelNum;
         this.writeInCurrentFile("if_icmpgt "+"Label"+first );
         this.writeInCurrentFile("ldc 1");
-        int second=this.labelNum++;
+        this.labelNum++;
+        int second = this.labelNum;
         this.writeInCurrentFile("goto "+"Label"+second);
         this.writeInCurrentFile("Label"+first+":");
         this.writeInCurrentFile("ldc 0");
@@ -430,7 +434,7 @@ public class CodeGenerator extends Visitor<Void>{
         whileStat.expr.accept(this);
         labelNum++;
         int second=labelNum;
-        this.writeInCurrentFile("ifeq "+second);
+        this.writeInCurrentFile("ifeq "+ "Label"+ second);
         breaks.push("Label"+second);
         continues.push("Label"+first);
         whileStat.expr.accept(this);
