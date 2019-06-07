@@ -242,11 +242,6 @@ public class CodeGenerator extends Visitor<Void>{
             VarSymbolTableItem varItem = (VarSymbolTableItem)SymbolTable.top().get("var_" + identifier.getName());
             Type varType = varItem.getType();
             int index = varItem.getDefinitionNumber();
-            if(index > this.definedVars){
-                varItem = (VarSymbolTableItem)SymbolTable.top().getInParentScopes("var_" + identifier.getName());
-                index = varItem.getDefinitionNumber();
-                varType = varItem.getType();
-            }
             if(varItem.mustBeUsedAfterDef()){
                 if(this.isLeft){ //It should be stored in
                     if(varType instanceof IntType)
