@@ -21,6 +21,7 @@ import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
 import toorla.symbolTable.symbolTableItem.ClassSymbolTableItem;
 import toorla.symbolTable.symbolTableItem.MethodSymbolTableItem;
+import toorla.symbolTable.symbolTableItem.varItems.LocalVariableSymbolTableItem;
 import toorla.symbolTable.symbolTableItem.varItems.VarSymbolTableItem;
 import toorla.typeChecker.ExpressionTypeExtractor;
 import toorla.types.Type;
@@ -31,6 +32,7 @@ import toorla.utilities.stack.Stack;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.util.ArrayList;
 
 public class CodeGenerator extends Visitor<Void>{
     private ExpressionTypeExtractor expressionTypeExtractor;
@@ -158,7 +160,7 @@ public class CodeGenerator extends Visitor<Void>{
         equalsExpr.getLhs().accept(this);
         equalsExpr.getRhs().accept(this);
         Type Lhs_t=equalsExpr.getLhs().accept(expressionTypeExtractor);
-        if(Lhs_t instanceof StringType || (Lhs_t instanceof UserDefinedType)){
+        if(Lhs_t instanceof StringType){
             this.writeInCurrentFile("invokevirtual  java/lang/String/equals(Ljava/lang/Object;)Z");
         }
         if((Lhs_t instanceof IntType) || (Lhs_t instanceof BoolType)){
@@ -174,11 +176,10 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile("Label"+second+":");
         }
         if(Lhs_t instanceof ArrayType){
-            if(Lhs_t instanceof ArrayType){
-                this.writeInCurrentFile(" invokestatic  java/util/Arrays/equals("+Lhs_t.getSymbol()+Lhs_t.getSymbol()+")Z");
-            }
+            this.writeInCurrentFile(" invokestatic  java/util/Arrays/equals("+Lhs_t.getSymbol()+Lhs_t.getSymbol()+")Z");
         }
-        //moghayaseye 2 ta userdefinded type?shayad aslan method equal tarif nashode bashe barash
+        if(Lhs_t instanceof UserDefinedType)
+            this.writeInCurrentFile("invokevirtual java/lang/Object.equals:(Ljava/lang/Object;)Z");
         return null;
     }
 
@@ -232,7 +233,6 @@ public class CodeGenerator extends Visitor<Void>{
     public Void visit(NotEquals notEquals) { //CHECK THIS NODE
         Not notnode=new Not(new Equals(notEquals.getLhs(),notEquals.getRhs()));
         notnode.accept(this);
-        //moghayaseye 2 ta userdefind type?shayad aslan method equal tarif nashode bashe barash?!
         return null;
     }
 
@@ -241,7 +241,7 @@ public class CodeGenerator extends Visitor<Void>{
             VarSymbolTableItem varItem = (VarSymbolTableItem)SymbolTable.top().get("var_" + identifier.getName());
             Type varType = varItem.getType();
             int index = varItem.getDefinitionNumber();
-            if(index > this.definedVars){ //lazeme inja while bezanam ya ba ye if hal mishe?
+            if(index > this.definedVars){
                 varItem = (VarSymbolTableItem)SymbolTable.top().getInParentScopes("var_" + identifier.getName());
                 index = varItem.getDefinitionNumber();
                 varType = varItem.getType();
@@ -332,31 +332,26 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(MethodCall methodCall) {
-        Type instanceType = methodCall.getInstance().accept(expressionTypeExtractor);
-        MethodSymbolTableItem methodItem = null;
-        String className = currentClass;
+        String className;
         if(methodCall.getInstance() instanceof Self){
-            try{
-                methodItem = (MethodSymbolTableItem)SymbolTable.top().get("method_" + methodCall.getMethodName().getName());
-            }catch(Exception e1){}
+            className = currentClass;
         }
-        else if(instanceType instanceof  UserDefinedType){
-            className = ((UserDefinedType)instanceType).getClassName();
-            try {
-                ClassSymbolTableItem classItem = (ClassSymbolTableItem) SymbolTable.root.get("class_" + className);
-                SymbolTable classSymbolTable = classItem.getSymbolTable();
-                methodItem = (MethodSymbolTableItem) classSymbolTable.get("method_"+methodCall.getMethodName().getName());
-            }catch(Exception e2){}
+        else{
+            UserDefinedType instanceType = (UserDefinedType) (methodCall.getInstance().accept(expressionTypeExtractor));
+            className = instanceType.getClassName();
         }
-        //else ke nadare?
-        methodCall.getInstance().accept(this);
-        for(Expression arg: methodCall.getArgs())
-            arg.accept(this);
-        String descriptor = methodCall.getMethodName().getName() + "(";
-        for(Type argType: methodItem.getArgumentsTypes())
-            descriptor += argType.getSymbol();
-        descriptor = descriptor + ")" + methodItem.getReturnType().getSymbol();
-        this.writeInCurrentFile("invokevirtual "+ "class_" + className+"/" + descriptor);
+        try {
+            ClassSymbolTableItem classItem = (ClassSymbolTableItem) SymbolTable.top().get("class_" + className);
+            MethodSymbolTableItem methodItem = (MethodSymbolTableItem) classItem.getSymbolTable().get("method_" + methodCall.getMethodName().getName());
+            methodCall.getInstance().accept(this);
+            for (Expression arg : methodCall.getArgs())
+                arg.accept(this);
+            String descriptor = methodCall.getMethodName().getName() + "(";
+            for (Type argType : methodItem.getArgumentsTypes())
+                descriptor += argType.getSymbol();
+            descriptor = descriptor + ")" + methodItem.getReturnType().getSymbol();
+            this.writeInCurrentFile("invokevirtual " + "class_" + className + "/" + descriptor);
+        }catch(Exception e){}
         return null;
     }
 
@@ -371,11 +366,9 @@ public class CodeGenerator extends Visitor<Void>{
             arrayCall.getInstance().accept(this);
             arrayCall.getIndex().accept(this);
         }
-        Type arrayType=arrayCall.getInstance().accept(expressionTypeExtractor);
-        //  System.out.println(arrayType);
+        Type arrayType=((ArrayType)arrayCall.getInstance().accept(expressionTypeExtractor)).getSingleType();
         if(!this.isLeft){
-            SingleType type=((ArrayType) arrayType).getSingleType();
-            if(new IntType().equals(type)|| new BoolType().equals(type))
+            if(arrayType instanceof IntType || arrayType instanceof BoolType)
                 this.writeInCurrentFile("iaload");
             else{
                 this.writeInCurrentFile("aaload");
@@ -486,8 +479,8 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Return returnStat) {
-        returnStat.getReturnedExpr().accept(this);
         Type returnType = returnStat.getReturnedExpr().accept(expressionTypeExtractor);
+        returnStat.getReturnedExpr().accept(this);
         if((returnType instanceof IntType) || (returnType instanceof BoolType))
             this.writeInCurrentFile("ireturn");
         else
@@ -544,6 +537,8 @@ public class CodeGenerator extends Visitor<Void>{
 
     // declarations
     public Void visit(ParameterDeclaration parameterDeclaration) {
+        SymbolTable.define();
+        this.definedVars++;
         return null;
     }
 
@@ -602,11 +597,12 @@ public class CodeGenerator extends Visitor<Void>{
                 this.writeInCurrentFile(".super class_" +classDeclaration.getParentName().getName());
             SymbolTable.pushFromQueue();
             this.currentClass = classDeclaration.getName().getName();
+            expressionTypeExtractor.setCurrentClass(classDeclaration);
             for(ClassMemberDeclaration cmd: classDeclaration.getClassMembers())
                 if(cmd instanceof FieldDeclaration)
                     cmd.accept(this);
             for(ClassMemberDeclaration cmd: classDeclaration.getClassMembers())
-                if(cmd instanceof MethodDeclaration)
+                if (cmd instanceof MethodDeclaration)
                     cmd.accept(this);
             this.writeInCurrentFile(".method public <init>()V");
             this.writeInCurrentFile("aload_0");
@@ -615,7 +611,9 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile(".end method");
             SymbolTable.pop();
             this.writer.close();
-        }catch(Exception e){}
+        }catch(Exception e){
+            System.out.println(e);
+        }
         return null;
     }
 
@@ -633,6 +631,7 @@ public class CodeGenerator extends Visitor<Void>{
                 this.writeInCurrentFile(".super class_" + entryClassDeclaration.getParentName().getName());
             SymbolTable.pushFromQueue();
             this.currentClass = entryClassDeclaration.getName().getName();
+            expressionTypeExtractor.setCurrentClass(entryClassDeclaration);
             for(ClassMemberDeclaration cmd: entryClassDeclaration.getClassMembers())
                 if(cmd instanceof FieldDeclaration)
                     cmd.accept(this);
@@ -646,7 +645,9 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile(".end method");
             SymbolTable.pop();
             this.writer.close();
-        }catch(Exception e){}
+        }catch(Exception e){
+            System.out.println(e);
+        }
         return null;
     }
 
@@ -689,5 +690,4 @@ public class CodeGenerator extends Visitor<Void>{
 
 //meghdar dehi avaliye: field hayi ke string hastan bayad meghdare "" begiran
 //node hayi ke neveshte shode check shan
-//Equals va not Equals hanooz nesfe an
-//array type single type ezafe kardam
+
