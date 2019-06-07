@@ -25,10 +25,7 @@ import toorla.symbolTable.symbolTableItem.varItems.VarSymbolTableItem;
 import toorla.typeChecker.ExpressionTypeExtractor;
 import toorla.types.Type;
 import toorla.types.arrayType.ArrayType;
-import toorla.types.singleType.BoolType;
-import toorla.types.singleType.IntType;
-import toorla.types.singleType.StringType;
-import toorla.types.singleType.UserDefinedType;
+import toorla.types.singleType.*;
 import toorla.utilities.graph.Graph;
 import toorla.utilities.stack.Stack;
 
@@ -100,7 +97,7 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Neg negExpr) {
-        negExpr.accept(this);
+        negExpr.getExpr().accept(this);
         this.writeInCurrentFile("ineg");
         return null;
     }
@@ -161,8 +158,8 @@ public class CodeGenerator extends Visitor<Void>{
         equalsExpr.getLhs().accept(this);
         equalsExpr.getRhs().accept(this);
         Type Lhs_t=equalsExpr.getLhs().accept(expressionTypeExtractor);
-        if(Lhs_t instanceof StringType){
-            this.writeInCurrentFile("invokevirtual  java/lang/String.equals:(Ljava/lang/Object;)Z");
+        if(Lhs_t instanceof StringType || (Lhs_t instanceof UserDefinedType)){
+            this.writeInCurrentFile("invokevirtual  java/lang/String/equals(Ljava/lang/Object;)Z");
         }
         if((Lhs_t instanceof IntType) || (Lhs_t instanceof BoolType)){
             labelNum++;
@@ -177,7 +174,9 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile("Label"+second+":");
         }
         if(Lhs_t instanceof ArrayType){
-            //JAVA/UTILL/ARRAY?!->nemidoonam chejoori estefade mishe:(
+            if(Lhs_t instanceof ArrayType){
+                this.writeInCurrentFile(" invokestatic  java/util/Arrays/equals("+Lhs_t.getSymbol()+Lhs_t.getSymbol()+")Z");
+            }
         }
         //moghayaseye 2 ta userdefinded type?shayad aslan method equal tarif nashode bashe barash
         return null;
@@ -187,7 +186,7 @@ public class CodeGenerator extends Visitor<Void>{
         gtExpr.getLhs().accept(this);
         gtExpr.getRhs().accept(this);
         int first=this.labelNum++;
-        this.writeInCurrentFile("if_icmple"+"Label"+first );
+        this.writeInCurrentFile("if_icmple "+"Label"+first );
         this.writeInCurrentFile("ldc 1");
         int second=this.labelNum++;
         this.writeInCurrentFile("goto "+"Label"+second);
@@ -201,7 +200,7 @@ public class CodeGenerator extends Visitor<Void>{
         lessThanExpr.getLhs().accept(this);
         lessThanExpr.getRhs().accept(this);
         int first=this.labelNum++;
-        this.writeInCurrentFile("if_icmpgt"+"Label"+first );
+        this.writeInCurrentFile("if_icmpgt "+"Label"+first );
         this.writeInCurrentFile("ldc 1");
         int second=this.labelNum++;
         this.writeInCurrentFile("goto "+"Label"+second);
@@ -212,40 +211,23 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Not notExpr) { //CHECK THIS NODE
-        notExpr.accept(this);
-        int first=this.labelNum++;
+        notExpr.getExpr().accept(this);
+        this.labelNum++;
+        int first = this.labelNum;
         this.writeInCurrentFile("ifeq " + "Label"+first);
         this.writeInCurrentFile("ldc 0");
-        int second=this.labelNum++;
+        this.labelNum++;
+        int second = this.labelNum;
         this.writeInCurrentFile("goto Label"+second);
-        this.writeInCurrentFile("Label+"+first+":");
+        this.writeInCurrentFile("Label"+first+":");
         this.writeInCurrentFile("ldc 1");
         this.writeInCurrentFile("Label"+second+":");
         return null;
     }
 
     public Void visit(NotEquals notEquals) { //CHECK THIS NODE
-        notEquals.getLhs().accept(this);
-        notEquals.getRhs().accept(this);
-        Type Lhs_t=notEquals.getLhs().accept(expressionTypeExtractor);
-        if(Lhs_t instanceof StringType){
-            this.writeInCurrentFile("invokevirtual  java/lang/String.equals:(Ljava/lang/Object;)Z");
-        }
-        if((Lhs_t instanceof IntType) || (Lhs_t instanceof BoolType)){
-            labelNum++;
-            int first=labelNum;
-            this.writeInCurrentFile("if_icmpneq "+"Label"+first);
-            this.writeInCurrentFile("ldc 0");
-            labelNum++;
-            int second=labelNum;
-            this.writeInCurrentFile("goto "+"Label"+second);
-            this.writeInCurrentFile("Label"+first+":");
-            this.writeInCurrentFile("ldc 1");
-            this.writeInCurrentFile("Label"+second+":");
-        }
-        if(Lhs_t instanceof ArrayType){
-            //JAVA/UTILL/ARRAY?!->nemidoonam chejoori estefade mishe:(
-        }
+        Not notnode=new Not(new Equals(notEquals.getLhs(),notEquals.getRhs()));
+        notnode.accept(this);
         //moghayaseye 2 ta userdefind type?shayad aslan method equal tarif nashode bashe barash?!
         return null;
     }
@@ -386,11 +368,14 @@ public class CodeGenerator extends Visitor<Void>{
             arrayCall.getIndex().accept(this);
         }
         Type arrayType=arrayCall.getInstance().accept(expressionTypeExtractor);
+        //  System.out.println(arrayType);
         if(!this.isLeft){
-            if((arrayType instanceof IntType) ||(arrayType instanceof BoolType))
+            SingleType type=((ArrayType) arrayType).getSingleType();
+            if(new IntType().equals(type)|| new BoolType().equals(type))
                 this.writeInCurrentFile("iaload");
-            else
+            else{
                 this.writeInCurrentFile("aaload");
+            }
         }
         return null;
     }
@@ -407,9 +392,11 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile( "invokevirtual java/io/PrintStream.println(I)V");
         }
         if(printType instanceof ArrayType){
-            this.writeInCurrentFile("invokestatic java/util/Arrays/toString([Ljava/lang/Object;)Ljava/lang/String;");
+            this.writeInCurrentFile("invokestatic java/util/Arrays/toString("+printType.getSymbol()+")Ljava/lang/String;");
             this.writeInCurrentFile("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+
         }
+
         return null;
     }
 
@@ -428,8 +415,6 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile("goto "+"Label"+second);
         this.writeInCurrentFile("Label"+first+":");
         conditional.getElseStatement().accept(this);
-        this.writeInCurrentFile("ifeq "+second);
-        conditional.getElseStatement().accept(this);
         this.writeInCurrentFile("Label"+second+":");
         SymbolTable.pop();
         this.writeInCurrentFile("; end if");
@@ -446,8 +431,8 @@ public class CodeGenerator extends Visitor<Void>{
         labelNum++;
         int second=labelNum;
         this.writeInCurrentFile("ifeq "+second);
-        breaks.push("Label"+Integer.toString(second));
-        continues.push("Label"+Integer.toString(first));
+        breaks.push("Label"+second);
+        continues.push("Label"+first);
         whileStat.expr.accept(this);
         this.writeInCurrentFile("goto "+"Label"+first);
         this.writeInCurrentFile("Label"+second+":");
@@ -632,6 +617,7 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(EntryClassDeclaration entryClassDeclaration) {
         try{
+
             File file = new File("artifact/class_" + entryClassDeclaration.getName().getName() + ".j");
             file.createNewFile();
             this.writer = new FileWriter(file);
@@ -699,6 +685,5 @@ public class CodeGenerator extends Visitor<Void>{
 
 //meghdar dehi avaliye: field hayi ke string hastan bayad meghdare "" begiran
 //node hayi ke neveshte shode check shan
-//print array ye giri darim
 //Equals va not Equals hanooz nesfe an
-
+//array type single type ezafe kardam
