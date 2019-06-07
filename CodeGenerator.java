@@ -43,6 +43,7 @@ public class CodeGenerator extends Visitor<Void>{
     private int labelNum;
     private int definedVars;
     private boolean isLeft;
+    private boolean canHaveGoto;
     private String currentClass;
     private String putFieldCommand;
 
@@ -50,6 +51,7 @@ public class CodeGenerator extends Visitor<Void>{
 
     public CodeGenerator(Graph<String> classHierarchy){
         this.isLeft = false;
+        this.canHaveGoto = false;
         this.labelNum = 0;
         this.expressionTypeExtractor = new ExpressionTypeExtractor(classHierarchy);
     }
@@ -114,7 +116,8 @@ public class CodeGenerator extends Visitor<Void>{
         andExpr.getRhs().accept(this);
         this.labelNum++;
         this.writeInCurrentFile("goto Label" + this.labelNum);
-        this.writeInCurrentFile(previousLabel + ": ldc 0");
+        this.writeInCurrentFile(previousLabel+":" );
+        this.writeInCurrentFile("ldc 0");
         this.writeInCurrentFile("Label" + this.labelNum + ":");
         return null;
     }
@@ -402,13 +405,15 @@ public class CodeGenerator extends Visitor<Void>{
         labelNum++;
         int first=labelNum;
         this.writeInCurrentFile("ifeq "+"Label"+first);
+        this.canHaveGoto = false;
         conditional.getThenStatement().accept(this);
-        SymbolTable.pop();
-        SymbolTable.pushFromQueue();
         labelNum++;
         int second=labelNum;
-        this.writeInCurrentFile("goto "+"Label"+second);
+        if(!this.canHaveGoto)
+            this.writeInCurrentFile("goto "+"Label"+second);
         this.writeInCurrentFile("Label"+first+":");
+        SymbolTable.pop();
+        SymbolTable.pushFromQueue();
         conditional.getElseStatement().accept(this);
         this.writeInCurrentFile("Label"+second+":");
         SymbolTable.pop();
@@ -483,6 +488,7 @@ public class CodeGenerator extends Visitor<Void>{
             this.writeInCurrentFile("ireturn");
         else
             this.writeInCurrentFile("areturn");
+        this.canHaveGoto = true;
         return null;
     }
 
@@ -690,4 +696,3 @@ public class CodeGenerator extends Visitor<Void>{
 
 //meghdar dehi avaliye: field hayi ke string hastan bayad meghdare "" begiran
 //node hayi ke neveshte shode check shan
-
