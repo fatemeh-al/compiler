@@ -19,6 +19,7 @@ import toorla.ast.statement.localVarStats.LocalVarDef;
 import toorla.ast.statement.localVarStats.LocalVarsDefinitions;
 import toorla.ast.statement.returnStatement.Return;
 import toorla.symbolTable.SymbolTable;
+import toorla.symbolTable.exceptions.ItemNotFoundException;
 import toorla.symbolTable.symbolTableItem.ClassSymbolTableItem;
 import toorla.symbolTable.symbolTableItem.MethodSymbolTableItem;
 import toorla.symbolTable.symbolTableItem.varItems.LocalVariableSymbolTableItem;
@@ -246,7 +247,7 @@ public class CodeGenerator extends Visitor<Void>{
                 index = varItem.getDefinitionNumber();
                 varType = varItem.getType();
             }
-            if(varItem.mustBeUsedAfterDef()){ //It is a variable. not a field
+            if(varItem.mustBeUsedAfterDef()){
                 if(this.isLeft){ //It should be stored in
                     if(varType instanceof IntType)
                         this.writeInCurrentFile("istore " + index);
@@ -269,7 +270,9 @@ public class CodeGenerator extends Visitor<Void>{
                     this.writeInCurrentFile("getfield " + "class_" + this.currentClass + "/" + identifier.getName() + " " + varType.getSymbol());
                 }
             }
-        }catch(Exception e){}
+        }catch(ItemNotFoundException e){
+            System.out.println(e);
+        }
         return null;
     }
 
@@ -575,6 +578,8 @@ public class CodeGenerator extends Visitor<Void>{
         this.writeInCurrentFile(".limit locals 100");
         SymbolTable.pushFromQueue();
         this.definedVars = 0;
+        for(ParameterDeclaration param: methodDeclaration.getArgs())
+            param.accept(this);
         for(Statement stat: methodDeclaration.getBody()) {
             this.writeInCurrentFile("; a new statement");
             stat.accept(this);
