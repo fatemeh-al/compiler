@@ -46,6 +46,7 @@ public class CodeGenerator extends Visitor<Void>{
     private boolean canHaveGoto;
     private String currentClass;
     private String putFieldCommand;
+    private String fieldInitialize;
 
     //Every comment is important. check if all of them are done
 
@@ -235,8 +236,8 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(NotEquals notEquals) { //CHECK THIS NODE
-        Not notnode=new Not(new Equals(notEquals.getLhs(),notEquals.getRhs()));
-        notnode.accept(this);
+        Not notNode=new Not(new Equals(notEquals.getLhs(),notEquals.getRhs()));
+        notNode.accept(this);
         return null;
     }
 
@@ -560,6 +561,12 @@ public class CodeGenerator extends Visitor<Void>{
             descriptor += "private ";
         descriptor += (fieldDeclaration.getIdentifier().getName() + " " + fieldDeclaration.getType().getSymbol());
         this.writeInCurrentFile(descriptor);
+        if(fieldDeclaration.getType() instanceof StringType){
+            if(!fieldInitialize.equals(""))
+               fieldInitialize += "\n";
+            fieldInitialize += "aload_0\nldc \"\"\n";
+            fieldInitialize += ("putfield " + "class_" + currentClass + "/" + fieldDeclaration.getIdentifier().getName() + " " + fieldDeclaration.getType().getSymbol());
+        }
         return null;
     }
 
@@ -592,6 +599,7 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(ClassDeclaration classDeclaration) {
         try{
+            fieldInitialize = "";
             File file = new File("artifact/class_" + classDeclaration.getName().getName() + ".j");
             file.createNewFile();
             this.writer = new FileWriter(file);
@@ -611,8 +619,12 @@ public class CodeGenerator extends Visitor<Void>{
                 if (cmd instanceof MethodDeclaration)
                     cmd.accept(this);
             this.writeInCurrentFile(".method public <init>()V");
+            this.writeInCurrentFile(".limit stack 1000");
+            this.writeInCurrentFile(".limit locals 100");
             this.writeInCurrentFile("aload_0");
             this.writeInCurrentFile("invokespecial java/lang/Object/<init>()V");
+            if(!fieldInitialize.equals(""))
+                this.writeInCurrentFile(fieldInitialize);
             this.writeInCurrentFile("return");
             this.writeInCurrentFile(".end method");
             SymbolTable.pop();
@@ -625,7 +637,7 @@ public class CodeGenerator extends Visitor<Void>{
 
     public Void visit(EntryClassDeclaration entryClassDeclaration) {
         try{
-
+            fieldInitialize = "";
             File file = new File("artifact/class_" + entryClassDeclaration.getName().getName() + ".j");
             file.createNewFile();
             this.writer = new FileWriter(file);
@@ -645,8 +657,12 @@ public class CodeGenerator extends Visitor<Void>{
                 if(cmd instanceof MethodDeclaration)
                     cmd.accept(this);
             this.writeInCurrentFile(".method public <init>()V");
+            this.writeInCurrentFile(".limit stack 1000");
+            this.writeInCurrentFile(".limit locals 100");
             this.writeInCurrentFile("aload_0");
             this.writeInCurrentFile("invokespecial java/lang/Object/<init>()V");
+            if(!fieldInitialize.equals(""))
+                this.writeInCurrentFile(fieldInitialize);
             this.writeInCurrentFile("return");
             this.writeInCurrentFile(".end method");
             SymbolTable.pop();
@@ -658,6 +674,8 @@ public class CodeGenerator extends Visitor<Void>{
     }
 
     public Void visit(Program program) {
+        File dir = new File("artifact");
+        dir.mkdir();
         String entryClassName="";
         SymbolTable.pushFromQueue();
         for( ClassDeclaration classDeclaration : program.getClasses() ) {
